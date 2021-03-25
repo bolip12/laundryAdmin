@@ -1,21 +1,42 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import * as React from 'react';
+import { LogBox } from 'react-native';
+import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+import firebase from './app/config/firebase';
+import theme from './app/config/theme';
+import store from './app/config/storeApp';
+
+import Loading from './app/comp/loading';
+import Notif from './app/comp/notif';
+
+import LoginScreen from './app/screen/FrontNav/LoginScreen';
+import UserNav from './app/nav/UserNav';
+
+LogBox.ignoreAllLogs();
+
+class App extends React.Component {
+  constructor(props) {
+      super(props);
+
+      this.state = store.getState();  
+      store.subscribe(()=>{
+        this.setState(store.getState());
+      });
+
+      this.state = {
+        ...this.state,
+      };
+  }
+
+  render() {
+    return (
+      <PaperProvider theme={theme}>
+        {this.state.isLogin ? <UserNav /> : <LoginScreen />}
+        <Loading />
+        <Notif />
+      </PaperProvider>
+    );
+  }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
