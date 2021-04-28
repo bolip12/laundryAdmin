@@ -28,6 +28,7 @@ class PaymentScreen extends ValidationComponent {
 	    	
 	    	docId: '',
 
+
 	    };
 	}
 
@@ -40,6 +41,7 @@ class PaymentScreen extends ValidationComponent {
 
 	componentDidMount() {
 		this.fetchData();
+		//this.fetchDataUser();
 	}
 
 	async fetchData() {
@@ -61,6 +63,7 @@ class PaymentScreen extends ValidationComponent {
 		  	id : doc.id,
 		  	userId: docData.userId,
 		  	nama: docData.nama,
+		  	telepon: docData.telepon,
 		  	namaUsaha: docData.namaUsaha,
 		  	tanggalMulai: docData.tanggalMulai,
 		  	tanggalAkhir: docData.tanggalAkhir,
@@ -79,9 +82,10 @@ class PaymentScreen extends ValidationComponent {
         });
 		
 	}
+	
 
-	async onSubmit(docId, userId, tanggalAkhir) {
-
+	async onSubmit(docId, userId, tanggalAkhir, telepon) {
+	
 		if(this.isFormValid()) {
 			store.dispatch({
 	            type: 'LOADING',
@@ -89,6 +93,8 @@ class PaymentScreen extends ValidationComponent {
 	        });
 
 			let self = this;
+			let message = 'KotakBon: Lisensi aplikasi berhasil diperpanjang sampai Tanggal '+dateFormat(tanggalAkhir);
+			
 			let batch = firebase.firestore().batch();
 
 			const dataUpdate = { 
@@ -119,21 +125,45 @@ class PaymentScreen extends ValidationComponent {
 		        });
 
 		    	self.fetchData();
+
+		    	self.fetchAPI(telepon, message);
 			});
 		}
 	}
 
-	onApproveConfirm(docId, userId, tanggalAkhir) {
+	onApproveConfirm(docId, userId, tanggalAkhir, telepon) {
 		
 	    Alert.alert(
 	      "Warning",
 	      "Apakah anda yakin?",
 	      [
 	        { text: "Cancel" },
-	        { text: "OK", onPress: () => this.onSubmit(docId, userId, tanggalAkhir) }
+	        { text: "OK", onPress: () => this.onSubmit(docId, userId, tanggalAkhir, telepon) }
 	      ],
 	    );
 	}
+
+	fetchAPI(telepon, message) {
+ 		//https://console.zenziva.net/wareguler/api/sendWA/
+ 		//https://console.zenziva.net/reguler/api/sendsms/
+ 		fetch('https://console.zenziva.net/wareguler/api/sendWA/',
+	 		{
+	 		   method: 'POST', 
+	 		   headers: { 'Content-Type': 'application/json' },
+			   body: JSON.stringify({
+			     'userkey': '057eaa734f70',
+			     'passkey' : '85a0025dd95930c35959a977',
+			     'to' : telepon,
+			     'message' : message
+			   }), 
+	 		}
+ 		)
+        .then((response) => response.json())
+        .then((json) => {
+            console.log( json)
+        })
+        .catch((error) => console.error(error));
+ 	}
 
 	onDesc(item) {
 		return(
@@ -156,7 +186,7 @@ class PaymentScreen extends ValidationComponent {
 	        <Subheading style={styleApp.Subheading}>{thousandFormat(item.nominal)}</Subheading>
 	        
  		  	<Button 
-              onPress={() => this.onApproveConfirm(item.id, item.userId, item.tanggalAkhir)}
+              onPress={() => this.onApproveConfirm(item.id, item.userId, item.tanggalAkhir, item.telepon)}
               mode="contained" 
               style={{ height: 35 ,justifyContent: 'center', marginTop:10 }}
             > 
@@ -172,6 +202,7 @@ class PaymentScreen extends ValidationComponent {
 	    	<PaperProvider theme={theme}>
 			    <Appbar.Header style={styleApp.Appbar}>
 			      <Appbar.Content title="Payment" color= {theme.colors.primary}/>
+			      <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => this.props.navigation.navigate('PaymentHistoryScreen')} />
 			    </Appbar.Header>
 			    
 			    <FlatList

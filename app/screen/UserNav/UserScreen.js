@@ -50,6 +50,7 @@ class UserScreen extends React.Component {
       const docData = doc.data();
       dataList.push({
         id : doc.id,
+        nama: docData.nama,
         namaUsaha: docData.namaUsaha,
         email: docData.email,
         licenseDate: docData.licenseDate,
@@ -125,7 +126,7 @@ class UserScreen extends React.Component {
                                 visible={this.state.['displayMenu'+item.id]}
                                 onDismiss={() => this.toggleMenu(item.id)}
                                 anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}>
-                                <Menu.Item onPress={() => this.props.navigation.navigate('UserLisensiScreen', {userId:item.id, namaUsaha:item.namaUsaha, licenseDate:item.licenseDate})} icon="account-check-outline" title="License" />
+                                <Menu.Item onPress={() => this.props.navigation.navigate('UserLisensiScreen', {userId:item.id, namaUsaha:item.namaUsaha, nama:item.nama, licenseDate:item.licenseDate})} icon="account-check-outline" title="License" />
                                 <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffScreen', {userId:item.id})} icon="account-group-outline" title="Staff" />
                                 <Menu.Item onPress={() => this.props.navigation.navigate('UserProfilScreen', {userId:item.id})} icon="account-outline" title="Profile" />
                               </Menu>}

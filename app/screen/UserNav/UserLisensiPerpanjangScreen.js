@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ScrollView, View, FlatList, Alert, Text } from 'react-native';
-import { Provider as PaperProvider, Appbar, TextInput, Button, HelperText, Divider } from 'react-native-paper';
+import { Provider as PaperProvider, Appbar, TextInput, Button, HelperText, Divider, Portal, Dialog, List, Caption, Subheading, Chip } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
 import firebase from '../../config/firebase.js';
@@ -32,21 +32,21 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 	    this.state = {
 	    	...this.state,
 
-	    	//nominal: 180000,
-	    	/*tanggalMulai: new Date(),
-	    	tanggalAkhir: new Date(),*/
+	    	dialogDisplay: false,
+	    	nominal: 0,
 
 	    };
 	}
 
 	componentDidMount() {
-		this.fetchData();
+		this.fetchDataBank();
+		this.fetchDataPaket();
 
-		let nominal = 180000 + this.getRandomInt();
-		this.setState({nominal: nominal});
+		/*let nominal = 180000 + this.getRandomInt();
+		this.setState({nominal: nominal});*/
 	}
 
-	async fetchData() {
+	/*async fetchData() {
 	    //data
 	    let self = this;
 
@@ -73,10 +73,148 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 		
 		//result
 		this.setState({tanggalMulai:tanggalMulai, tanggalAkhir:tanggalAkhir, nama:nama, namaUsaha:namaUsaha});
+	}*/
+
+	async fetchDataBank() {
+		store.dispatch({
+            type: 'LOADING',
+            payload: { isLoading:true }
+        });
+        
+		let query = firebase.firestore().collection('referensi').doc('bank').collection('bank');
+
+	    //data
+	    const bankData = [];
+
+	    const docList = await query.get();
+		docList.forEach(doc => {
+		  const docData = doc.data();
+		  bankData.push({
+		  	id: doc.id,
+            nama : docData.nama,
+            rekNo : docData.rekNo,
+            rekNama : docData.rekNama,
+		  });
+		});
+
+	    this.setState({ bankData: bankData });
+	}
+
+	async fetchDataPaket() {
+		
+        let licenseDate = this.props.route.params.licenseDate;
+        let randomNominal = Math.floor(Math.random() * (99 - 10 + 1) ) + 10;
+
+		let query = firebase.firestore().collection('referensi').doc('lisensiPaket').collection('lisensiPaket');
+
+	    //data
+	    const paketData = [];
+
+	    const docList = await query.get();
+		docList.forEach(doc => {
+		  const docData = doc.data();
+
+		  let licenseDateNew = new Date(licenseDate.seconds * 1000);
+		  licenseDateNew.setDate(licenseDateNew.getDate() + docData.durasi);
+
+		  let harga = docData.harga + randomNominal;
+
+		  paketData.push({
+		  	id: doc.id,
+            nama : docData.nama,
+            harga : harga,
+            hargaBulanan : docData.hargaBulanan,
+            durasi : docData.durasi,
+            licenseDate: licenseDate,
+            licenseDateNew: licenseDateNew,
+		  });
+		});
+
+	    this.setState({ paketData: paketData });
+
+	    store.dispatch({
+            type: 'LOADING',
+            payload: { isLoading:false }
+        });
+	   	
+	}
+
+	onClose() {
+
+		let userId = this.props.route.params.userId;
+		
+		this.setState({dialogDisplay:false});
+	    this.props.navigation.push('UserLisensiScreen', {userId:userId});
+	}
+
+	onSelectConfirm(harga, licenseDateNew) {
+	    Alert.alert(
+	      "Warning",
+	      "Apakah anda yakin?",
+	      [
+	        { text: "Cancel" },
+	        { text: "OK", onPress: () => this.onSelect(harga, licenseDateNew) }
+	      ],
+	    );
 	}
 
 
-	async onSubmit() {
+	async onSelect(harga, licenseDateNew) {
+		
+		if(this.isFormValid()) {
+			
+			let userId = this.props.route.params.userId;
+			let nama = this.props.route.params.nama;
+			let namaUsaha = this.props.route.params.namaUsaha;
+			let licenseDate = this.props.route.params.licenseDate;
+
+			let tanggalMulai = ''; 
+				tanggalMulai = dateFilterFormat(new Date(licenseDate.seconds * 1000));
+				tanggalMulai.setDate(tanggalMulai.getDate() + 1);
+
+			let tanggalAkhir = dateFilterFormat(licenseDateNew);
+			let nominal = harga;
+
+
+			const dataInsert = { 
+								 userId: userId,
+								 namaUsaha: namaUsaha,
+								 nama: nama,
+								 tanggalMulai: tanggalMulai, 
+								 tanggalAkhir: tanggalAkhir, 
+								 nominal: clearThousandFormat(nominal),
+								 statusBayar: 'belumBayar',
+								 statusLicense: 'belumDisetujui'
+								};
+
+			await firebase.firestore().collection('userLicense').doc().set(dataInsert);
+			
+			this.setState({dialogDisplay:true, displayHarga:harga});
+		
+	    }
+	}
+
+	onRight(item) {
+		
+	    return(
+	      <View>
+	        <Subheading style={styleApp.Subheading}>{thousandFormat(item.harga)}</Subheading>
+	       
+	        <Chip mode="outlined" style={{marginTop:5, backgroundColor:theme.colors.primary, justifyContent: "center", alignItems: "center"}} textStyle={{color:theme.colors.background, fontSize:16}} onPress={() => this.onSelectConfirm(item.harga, item.licenseDateNew)}>Pilih</Chip>
+	      </View>
+	    );
+	}
+
+	onDesc(item) {
+	    return(
+	      <View>
+	        <Caption style={{ fontSize: 14 }}>{'Berlaku : '+dateFormat(item.licenseDateNew)}</Caption>  
+	      </View>
+	    );
+	}
+
+
+	/*async onSubmit() {
 		this.validate({
 			tanggalMulai: {required:true},
 			tanggalAkhir: {required:true},
@@ -90,7 +228,7 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 	            payload: { isLoading:true }
 	        });
 
-			let docId = this.props.route.params.docId;
+			let userId = this.props.route.params.userId;
 
 			const dataInsert = { 
 								 userId: userId,
@@ -120,17 +258,71 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 
 	getRandomInt(max=100) {
 	  return Math.floor(Math.random() * Math.floor(max));
-	}
+	}*/
 
 	render() {
 	    return (
 	    	<PaperProvider theme={theme}>
 			    <Appbar.Header style={styleApp.Appbar}>
 			      <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
-			      <Appbar.Content title="User Pepanjangan Lisensi" color= {theme.colors.primary}/>
+			      <Appbar.Content title="Pepanjangan Lisensi User" color= {theme.colors.primary}/>
 			    </Appbar.Header>
 
-			    <ScrollView style={styleApp.ScrollView}>
+			     <FlatList
+			      keyboardShouldPersistTaps="handled"
+                  data={this.state.paketData}
+                  keyExtractor={(item) => item.id}
+                  style={styleApp.FlatList}
+                  renderItem={({ item }) => (
+                    <View>
+                    	<List.Item
+			              title={item.nama}
+			              titleStyle={{fontSize:17, fontWeight:'bold'}}
+			              description={() => this.onDesc(item)}
+			              right={() => this.onRight(item)}
+			              onPress={() => this.onSelectConfirm(item.harga, item.licenseDateNew)}
+			            />
+			            <Divider />
+                    </View>
+                  )}
+                />
+
+				<Portal>
+			        <Dialog visible={this.state.dialogDisplay} onDismiss={() => this.onClose()}>
+			          <Dialog.Content>
+		          	
+	          			<List.Item
+			              title="Total"
+			              titleStyle={{fontWeight:'bold', fontSize: 18}}
+			              description={() => <Subheading style={{ fontWeight:'bold', fontSize: 18 }}>{thousandFormat(this.state.displayHarga)}</Subheading>}
+			            />
+		          		
+			          	<List.Section style={{ marginTop:-15 }}>
+					    	<List.Item
+				              title="Rekening Pembayaran"
+				              titleStyle={{fontWeight:'bold'}}
+				            />
+				            <FlatList
+				              data={this.state.bankData}
+				              keyExtractor={(item) => item.id}
+				              style={{ backgroundColor:'#fff' }}
+				              renderItem={({ item }) => (
+		                    	<List.Item
+					              title={item.nama}
+					              description={item.rekNo+'\n'+item.rekNama}
+					              style={{ marginTop:-15 }}
+					            />
+				              )}
+				            />
+				        </List.Section>
+			          </Dialog.Content>
+			          <Dialog.Actions>
+			            <Button onPress={() => this.onClose()}>OK, SAYA MENGERTI</Button>
+			          </Dialog.Actions>
+			        </Dialog>
+			    </Portal>
+
+			    {/*<ScrollView style={styleApp.ScrollView}>
 			  		
 			  		<TextInput
 						label="Tanggal Mulai"
@@ -169,7 +361,7 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 			    	style={styleApp.Button}
 			    >
 				    Save
-				</Button>
+				</Button>*/}
 
 
 			</PaperProvider>

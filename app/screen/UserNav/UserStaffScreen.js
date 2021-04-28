@@ -50,6 +50,7 @@ class UserScreen extends React.Component {
         dataList.push({
           id : doc.id,
           nama: docData.nama,
+          namaUsaha: docData.namaUsaha,
           email: docData.email,
           licenseDate: docData.licenseDate,
         });
@@ -99,6 +100,7 @@ class UserScreen extends React.Component {
                 description={() => this.onDesc(item)}
                 left={props => <Badge style={{ backgroundColor: theme.colors.primary, margin: 10, marginBottom: 25 }} size={40}>{item.nama.charAt(0)}</Badge>}
                 right={() => <IconButton icon='account-check' size={35} onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id})} />}
+                onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.namaUsaha, nama:item.nama, licenseDate:item.licenseDate})}
               />
               <Divider />
             </View>

@@ -22,7 +22,12 @@ import UserStaffLisensiScreen from '../screen/UserNav/UserStaffLisensiScreen';
 import UserStaffLisensiPerpanjangScreen from '../screen/UserNav/UserStaffLisensiPerpanjangScreen';
 
 import PaymentScreen from '../screen/UserNav/PaymentScreen';
-/*import PaymentDetailScreen from '../screen/UserNav/PaymentDetailScreen.js';*/
+import PaymentHistoryScreen from '../screen/UserNav/PaymentHistoryScreen';
+
+import LaporanScreen from '../screen/UserNav/LaporanScreen';
+import LaporanPembayaranScreen from '../screen/UserNav/LaporanPembayaranScreen';
+import LaporanLisensiScreen from '../screen/UserNav/LaporanLisensiScreen.js';
+
 
 const BottomTab = createMaterialBottomTabNavigator();
 const UserStack = createStackNavigator();
@@ -49,7 +54,7 @@ class UserNav extends React.Component {
               options={{
                 tabBarLabel: 'User',
                 tabBarIcon: ({color}) => (
-                  <MaterialCommunityIcons name="account" color={color} size={25} />)
+                  <MaterialCommunityIcons name="account-outline" color={color} size={25} />)
               }}
             >
             {() => (
@@ -75,13 +80,31 @@ class UserNav extends React.Component {
               options={{
                 tabBarLabel: 'Payment',
                 tabBarIcon: ({color}) => (
-                  <FontAwesome5 name="money-bill" color={color} size={20} />)
+                  <MaterialCommunityIcons name="cash" color={color} size={27} />)
               }}
             >
             {() => (
             <UserStack.Navigator initialRouteName="PaymentScreen" screenOptions={{headerShown:false}}>
               <UserStack.Screen name="PaymentScreen" component={PaymentScreen} />
+              <UserStack.Screen name="PaymentHistoryScreen" component={PaymentHistoryScreen} />
               {/*<UserStack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} />*/}
+            </UserStack.Navigator>
+            )}
+            </BottomTab.Screen>
+
+            <BottomTab.Screen 
+              name="LaporanScreen"
+              options={{
+                tabBarLabel: 'Laporan',
+                tabBarIcon: ({color}) => (
+                  <MaterialCommunityIcons name="clipboard-text-outline" color={color} size={25} />)
+              }}
+            >
+            {() => (
+            <UserStack.Navigator initialRouteName="LaporanScreen" screenOptions={{headerShown:false}}>
+              <UserStack.Screen name="LaporanScreen" component={LaporanScreen} />
+              <UserStack.Screen name="LaporanPembayaranScreen" component={LaporanPembayaranScreen} />
+              <UserStack.Screen name="LaporanLisensiScreen" component={LaporanLisensiScreen} />
             </UserStack.Navigator>
             )}
             </BottomTab.Screen>

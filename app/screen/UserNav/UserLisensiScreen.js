@@ -66,6 +66,7 @@ class UserLisensiScreen extends ValidationComponent {
 
 	    //data
 	    const dataList = [];
+	    let statusBayar = '';
 
 	    const docList = await query.get();
 		docList.forEach(doc => {
@@ -79,10 +80,12 @@ class UserLisensiScreen extends ValidationComponent {
 		  	statusBayar: docData.statusBayar,
 		  	statusLicense: docData.statusLicense,
 		  });
+
+		  statusBayar = docData.statusBayar;
 		});
 
 		//result
-		this.setState({dataList:dataList});
+		this.setState({dataList:dataList, statusBayar:statusBayar});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -103,7 +106,8 @@ class UserLisensiScreen extends ValidationComponent {
 		  bankData.push({
 		  	id: doc.id,
             nama : docData.nama,
-            rekening : docData.rekening,
+            rekNama : docData.rekNama,
+            rekNo : docData.rekNo,
 		  });
 		});
 		
@@ -166,7 +170,7 @@ class UserLisensiScreen extends ValidationComponent {
 
 	    return(
 	      <View>
-	        <Subheading style={styleApp.Subheading}>{thousandFormat(item.nominal)}</Subheading>
+	        <Subheading style={styleApp.Subheading}>{item.nominal == 0 ? 'Gratis' : thousandFormat(item.nominal)}</Subheading>
 	        { item.statusBayar == 'belumBayar' &&
  		  	<Button 
               onPress={() => this.toggleForm(item.id)}
@@ -184,7 +188,15 @@ class UserLisensiScreen extends ValidationComponent {
 	    );
 	}
 
-	
+	radioLabel(item) {
+		return (
+			<View>
+				<Subheading>{item.nama}</Subheading>
+				<Caption>{item.rekNo}</Caption>
+				<Caption>{item.rekNama}</Caption>
+			</View>
+		);
+	}
 
 	render() {
 	    return (
@@ -212,15 +224,18 @@ class UserLisensiScreen extends ValidationComponent {
                   )}
                 />
 
+                { this.state.statusBayar != 'belumBayar' &&
                 <Button 
 		            mode="contained"
 		            icon="plus" 
-		            onPress={() => this.props.navigation.navigate('UserLisensiPerpanjangScreen', {userId:this.props.route.params.userId})}
+		            onPress={() => this.props.navigation.navigate('UserLisensiPerpanjangScreen', {userId:this.props.route.params.userId, licenseDate:this.props.route.params.licenseDate, namaUsaha:this.props.route.params.namaUsaha, nama:this.props.route.params.nama})}
 		            disabled={this.state.isLoading}
 		            style={styleApp.Button}
 		         >
 		            Perpanjang
 		        </Button>
+		    	}
+
 
 		        <FormBottom
 		        	title="Pilih Bank"
@@ -234,7 +249,7 @@ class UserLisensiScreen extends ValidationComponent {
 		              keyExtractor={(item) => item.id}
 		              style={{ backgroundColor:'#fff' }}
 		              renderItem={({ item }) => (
-		                <RadioButton.Item label={item.nama+'\nRek: '+item.rekening} value={item.nama} />
+		                <RadioButton.Item label={this.radioLabel(item)} value={item.nama} color={theme.colors.primary} />
 		              )}
 		            />
 		            </RadioButton.Group>
