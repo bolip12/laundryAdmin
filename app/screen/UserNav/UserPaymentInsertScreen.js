@@ -65,10 +65,12 @@ class UserPaymentInsertScreen extends ValidationComponent {
 	            payload: { isLoading:false }
 	        });
 
-	         store.dispatch({
-	            type: 'NOTIF',
-	            payload: { notifDisplay:true, notifMessage:'Data berhasil disimpan' }
-	        });
+	        showMessage({
+	          message: 'Data berhasil disimpan',
+	          icon: 'success',
+	          backgroundColor: theme.colors.primary,
+	          color: theme.colors.background,
+	        }); 
 
 	        this.props.navigation.navigate('UserPaymentScreen');
 		}

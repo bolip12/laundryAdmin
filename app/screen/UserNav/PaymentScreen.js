@@ -2,13 +2,15 @@ import * as React from 'react';
 import { View, FlatList, Alert, Text, ScrollView } from 'react-native';
 import { Provider as PaperProvider, Appbar, Searchbar, List, Divider, Chip, Portal, Caption, Subheading, Dialog, TextInput, Button, IconButton, Badge, RadioButton } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
+import { showMessage } from "react-native-flash-message";
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import store from '../../config/storeApp';
 import styleApp from '../../config/styleApp.js';
 import dateFilterFormat from '../../comp/dateFilterFormat.js';
 import dateFormat from '../../comp/dateFormat.js';
+import dateFormatSupa from '../../comp/dateFormatSupa.js';
 import DateTimeInput from '../../comp/dateTimeInput.js';
 import thousandFormat from '../../comp/thousandFormat.js';
 import clearThousandFormat from '../../comp/clearThousandFormat.js';
@@ -33,9 +35,9 @@ class PaymentScreen extends ValidationComponent {
 	}
 
 	componentDidUpdate(prevProps, prevState) {
-	    if(prevState.notifDisplay !== this.state.notifDisplay) {
+	   /* if(prevState.notifDisplay !== this.state.notifDisplay) {
 	      this.fetchData();
-	    }
+	    }*/
 	}
 
 
@@ -50,32 +52,15 @@ class PaymentScreen extends ValidationComponent {
             payload: { isLoading:true }
         });
 
-		//query
-		let query = firebase.firestore().collection('userLicense').where('statusLicense', '==', 'belumDisetujui').orderBy('tanggalMulai');
 
-	    //data
-	    const dataList = [];
-	    
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  dataList.push({
-		  	id : doc.id,
-		  	userId: docData.userId,
-		  	nama: docData.nama,
-		  	telepon: docData.telepon,
-		  	namaUsaha: docData.namaUsaha,
-		  	tanggalMulai: docData.tanggalMulai,
-		  	tanggalAkhir: docData.tanggalAkhir,
-		  	nominal: docData.nominal,
-		  	statusBayar: docData.statusBayar,
-		  	statusLicense: docData.statusLicense,
-		  });
-		  
-		});
+        let { data, error } = await supabase
+		      .from('user_license')
+		      .select('id, user_id, user:user_id ( nama, nama_usaha, telepon ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar')
+		      .eq('status_license', 'not_approved')
+		      .order('tanggal_mulai', {ascending:false})
 
 		//result
-		this.setState({dataList:dataList});
+		this.setState({dataList:data});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -92,42 +77,45 @@ class PaymentScreen extends ValidationComponent {
 	            payload: { isLoading:true }
 	        });
 
-			let self = this;
-			let message = 'KotakBon: Lisensi aplikasi berhasil diperpanjang sampai Tanggal '+dateFormat(tanggalAkhir);
+			let message = 'KotakBon: Lisensi aplikasi berhasil diperpanjang sampai Tanggal '+dateFormatSupa(tanggalAkhir);
 			
-			let batch = firebase.firestore().batch();
+			let update_license = await supabase
+							  .from('user_license')
+							  .update([{
+								    	status_license: 'approved',
+								 		
+									}])
+							  .eq('id', docId);
 
-			const dataUpdate = { 
-								 statusLicense: 'sudahDisetujui',
-								 
-								};
 
-			let docUpdate = firebase.firestore().collection('userLicense').doc(docId);
-			batch.update(docUpdate, dataUpdate);
+			let update_user = await supabase
+							  .from('user')
+							  .update([{
+								    	license_date: new Date(tanggalAkhir),
+								 		
+									}])
+							  .eq('id', userId);
 
-			const dataUpdateUser = { 
-								 licenseDate: new Date(tanggalAkhir.seconds * 1000),
-								 
-								};
 			
-			let docUpdateUser = firebase.firestore().collection('user').doc(userId);
-			batch.update(docUpdateUser, dataUpdateUser);
 			
-			await batch.commit().then(function () {
-				store.dispatch({
-		            type: 'LOADING',
-		            payload: { isLoading:false }
-		        });
+			
+			store.dispatch({
+	            type: 'LOADING',
+	            payload: { isLoading:false }
+	        });
 
-		         store.dispatch({
-		            type: 'NOTIF',
-		            payload: { notifDisplay:true, notifMessage:'Data berhasil disimpan' }
-		        });
+	        showMessage({
+	          message: 'Data berhasil disimpan',
+	          icon: 'success',
+	          backgroundColor: theme.colors.primary,
+	          color: theme.colors.background,
+	        }); 
 
-		    	self.fetchData();
 
-		    	self.fetchAPI(telepon, message);
-			});
+	    	this.fetchData();
+
+	    	//this.fetchAPI(telepon, message);
+			
 		}
 	}
 
@@ -168,8 +156,8 @@ class PaymentScreen extends ValidationComponent {
 	onDesc(item) {
 		return(
 			<View>
-				<Caption style={{ fontSize: 14 }}>Tanggal Mulai: {dateFormat(item.tanggalMulai)}</Caption>
-				<Caption style={{ fontSize: 14 }}>Tanggal Akhir: {dateFormat(item.tanggalAkhir)}</Caption>
+				<Caption style={{ fontSize: 14 }}>Tanggal Mulai: {dateFormatSupa(item.tanggal_mulai)}</Caption>
+				<Caption style={{ fontSize: 14 }}>Tanggal Akhir: {dateFormatSupa(item.tanggal_akhir)}</Caption>
 			</View>
 		);
 	}
@@ -177,7 +165,7 @@ class PaymentScreen extends ValidationComponent {
 	
 	onRight(item) {
 		let valueStatusBayar = '';
-		if(item.statusBayar == 'sudahBayar') {
+		if(item.status_bayar == 'paid') {
 			valueStatusBayar = 'Sudah Bayar';
 		}
 
@@ -186,7 +174,7 @@ class PaymentScreen extends ValidationComponent {
 	        <Subheading style={styleApp.Subheading}>{thousandFormat(item.nominal)}</Subheading>
 	        
  		  	<Button 
-              onPress={() => this.onApproveConfirm(item.id, item.userId, item.tanggalAkhir, item.telepon)}
+              onPress={() => this.onApproveConfirm(item.id, item.user_id, item.tanggal_akhir, item.user.telepon)}
               mode="contained" 
               style={{ height: 35 ,justifyContent: 'center', marginTop:10 }}
             > 
@@ -201,7 +189,7 @@ class PaymentScreen extends ValidationComponent {
 	    return (
 	    	<PaperProvider theme={theme}>
 			    <Appbar.Header style={styleApp.Appbar}>
-			      <Appbar.Content title="Payment" color= {theme.colors.primary}/>
+			      <Appbar.Content title="Verifikasi Pembayaran" color= {theme.colors.primary}/>
 			      <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => this.props.navigation.navigate('PaymentHistoryScreen')} />
 			    </Appbar.Header>
 			    
@@ -213,7 +201,7 @@ class PaymentScreen extends ValidationComponent {
                   renderItem={({ item }) => (
                     <View>
                     	<List.Item
-			              title={item.nama+' '+'('+item.namaUsaha+')'}
+			              title={item.user.nama+' '+'('+item.user.nama_usaha+')'}
 			              description={() => this.onDesc(item)}
 			              right={() => this.onRight(item)}
 			              //onPress={() => this.onSelect(item.id)}

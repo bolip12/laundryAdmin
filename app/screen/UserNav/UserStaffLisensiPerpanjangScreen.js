@@ -3,15 +3,12 @@ import { ScrollView, View, FlatList, Alert, Text } from 'react-native';
 import { Provider as PaperProvider, Appbar, TextInput, Button, HelperText, Divider, Portal, Dialog, List, Caption, Subheading, Chip } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import store from '../../config/storeApp';
 
-import PickerInput from '../../comp/pickerInput.js';
 import FormBottom from '../../comp/formBottom.js';
-import FormBottomRadio from '../../comp/formBottom.js';
-import FormBottomBayar from '../../comp/formBottom.js';
 import thousandFormat from '../../comp/thousandFormat.js';
 import clearThousandFormat from '../../comp/clearThousandFormat.js';
 import dateFormat from '../../comp/dateFormat.js';
@@ -41,94 +38,41 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
 	componentDidMount() {
 		this.fetchDataBank();
 		this.fetchDataPaket();
-
-		/*let nominal = 180000 + this.getRandomInt();
-		this.setState({nominal: nominal});*/
+	
 	}
 
-	/*async fetchData() {
-	    //data
-	    let self = this;
-
-	    let userId = this.props.route.params.userId;
-
-	    //query
-	    let tanggalMulai = '';
-	    let tanggalAkhir= '';
-
-	    let query = firebase.firestore().collection('userLicense').where('userId', '==', userId).orderBy('tanggalMulai', 'desc').limit(1)
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  namaUsaha = docData.namaUsaha;
-		  nama = docData.nama;
-		  
-		  tanggalMulai = new Date(docData.tanggalAkhir.seconds * 1000);
-		  tanggalMulai.setDate(tanggalMulai.getDate() + 1);
-
-		  tanggalAkhir = new Date(docData.tanggalAkhir.seconds * 1000);
-		  tanggalAkhir.setMonth(tanggalAkhir.getMonth() + 6);
-		  
-		});
-		
-		//result
-		this.setState({tanggalMulai:tanggalMulai, tanggalAkhir:tanggalAkhir, nama:nama, namaUsaha:namaUsaha});
-	}*/
-
-	async fetchDataBank() {
+	async fetchDataPaket() {
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:true }
         });
-        
-		let query = firebase.firestore().collection('referensi').doc('bank').collection('bank');
-
-	    //data
-	    const bankData = [];
-
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  bankData.push({
-		  	id: doc.id,
-            nama : docData.nama,
-            rekNo : docData.rekNo,
-            rekNama : docData.rekNama,
-		  });
-		});
-
-	    this.setState({ bankData: bankData });
-	}
-
-	async fetchDataPaket() {
 		
         let licenseDate = this.props.route.params.licenseDate;
         let randomNominal = Math.floor(Math.random() * (99 - 10 + 1) ) + 10;
 
-		let query = firebase.firestore().collection('referensi').doc('lisensiPaket').collection('lisensiPaket');
+		//let harga = docData.harga + randomNominal;
 
-	    //data
-	    const paketData = [];
+        let paketData = [];
+	    let { data, error } = await supabase
+		      .from('ref_license_paket')
+		      .select('id, nama, harga, harga_bulanan, durasi')
 
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
+		data.map(doc => {
 
-		  let licenseDateNew = new Date(licenseDate.seconds * 1000);
-		  licenseDateNew.setDate(licenseDateNew.getDate() + docData.durasi);
-
-		  let harga = docData.harga + randomNominal;
+		let licenseDateNew = new Date(licenseDate);
+		licenseDateNew.setDate(licenseDateNew.getDate() + doc.durasi);
 
 		  paketData.push({
 		  	id: doc.id,
-            nama : docData.nama,
-            harga : harga,
-            hargaBulanan : docData.hargaBulanan,
-            durasi : docData.durasi,
+            nama : doc.nama,
+            harga : doc.harga + randomNominal,
+            harga_bulanan : doc.hargaBulanan,
+            durasi : doc.durasi,
             licenseDate: licenseDate,
             licenseDateNew: licenseDateNew,
 		  });
 		});
+		
 
 	    this.setState({ paketData: paketData });
 
@@ -136,6 +80,16 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
             type: 'LOADING',
             payload: { isLoading:false }
         });
+	   	
+	}
+
+	async fetchDataBank() {
+
+		let { data:bank_data, error } = await supabase
+		      .from('ref_bank')
+		      .select('id, nama, rek_no, rek_nama')
+
+	    this.setState({ bankData: bank_data });
 	   	
 	}
 
@@ -168,26 +122,30 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
 			let namaUsaha = this.props.route.params.namaUsaha;
 			let licenseDate = this.props.route.params.licenseDate;
 
-			let tanggalMulai = ''; 
-				tanggalMulai = dateFilterFormat(new Date(licenseDate.seconds * 1000));
-				tanggalMulai.setDate(tanggalMulai.getDate() + 1);
+			let tanggal_mulai = ''; 
+				tanggal_mulai = dateFilterFormat(new Date(licenseDate));
+				tanggal_mulai.setDate(tanggal_mulai.getDate() + 1);
 
-			let tanggalAkhir = dateFilterFormat(licenseDateNew);
+			let tanggal_akhir = dateFilterFormat(licenseDateNew);
 			let nominal = harga;
 
+			let currTime = new Date();
+	        let result = [];
 
-			const dataInsert = { 
-								 userId: staffId,
-								 namaUsaha: namaUsaha,
-								 nama: nama,
-								 tanggalMulai: tanggalMulai, 
-								 tanggalAkhir: tanggalAkhir, 
-								 nominal: clearThousandFormat(nominal),
-								 statusBayar: 'belumBayar',
-								 statusLicense: 'belumDisetujui'
-								};
+			result = await supabase
+				  .from('user_license')
+				  .insert([{ 	
+			  				user_id: staffId,
+			  				tanggal_mulai: tanggal_mulai, 
+							tanggal_akhir: tanggal_akhir, 
+							nominal: clearThousandFormat(nominal),
+							status_bayar: 'not_paid',
+							status_license: 'not_approved',
+			  				_created_at:currTime, 
+					    	/*_created_by:this.state.uid,
+					    	_updated_by:this.state.uid,*/
+					    }]);
 
-			await firebase.firestore().collection('userLicense').doc().set(dataInsert);
 			
 			this.setState({dialogDisplay:true, displayHarga:harga});
 		
@@ -214,51 +172,6 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
 	}
 
 
-	/*async onSubmit() {
-		this.validate({
-			tanggalMulai: {required:true},
-			tanggalAkhir: {required:true},
-			nominal: {required:true},
-		});
-
-
-		if(this.isFormValid()) {
-			store.dispatch({
-	            type: 'LOADING',
-	            payload: { isLoading:true }
-	        });
-
-			let userId = this.props.route.params.userId;
-
-			const dataInsert = { 
-								 userId: userId,
-								 namaUsaha: this.state.namaUsaha,
-								 nama: this.state.nama,
-								 tanggalMulai: this.state.tanggalMulai, 
-								 tanggalAkhir: this.state.tanggalAkhir, 
-								 nominal: clearThousandFormat(this.state.nominal),
-								 statusBayar: 'belumBayar',
-								 statusLicense: 'belumDisetujui'
-								};
-			await firebase.firestore().collection('userLicense').doc().set(dataInsert);
-
-			store.dispatch({
-	            type: 'LOADING',
-	            payload: { isLoading:false }
-	        });
-
-	         store.dispatch({
-	            type: 'NOTIF',
-	            payload: { notifDisplay:true, notifMessage:'Data berhasil disimpan' }
-	        });
-
-	        this.props.navigation.navigate('UserLisensiScreen');
-		}
-	}
-
-	getRandomInt(max=100) {
-	  return Math.floor(Math.random() * Math.floor(max));
-	}*/
 
 	render() {
 	    return (
@@ -309,7 +222,7 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
 				              renderItem={({ item }) => (
 		                    	<List.Item
 					              title={item.nama}
-					              description={item.rekNo+'\n'+item.rekNama}
+					              description={item.rek_no+'\n'+item.rek_nama}
 					              style={{ marginTop:-15 }}
 					            />
 				              )}
@@ -321,47 +234,6 @@ class UserStaffLisensiPerpanjangScreen extends ValidationComponent {
 			          </Dialog.Actions>
 			        </Dialog>
 			    </Portal>
-
-			    {/*<ScrollView style={styleApp.ScrollView}>
-			  		
-			  		<TextInput
-						label="Tanggal Mulai"
-						value={dateFormat(this.state.tanggalMulai)}
-			         	disabled
-			         	onChangeDate={(date) => this.setState({tanggalMulai:date})}
-				        style={styleApp.TextInput}	
-					/>
-					<Divider/>
-				    
-				    <TextInput
-						label="Tanggal Akhir"
-						value={dateFormat(this.state.tanggalAkhir)}
-			         	disabled
-			         	onChangeDate={(date) => this.setState({tanggalAkhir:date})}
-				        style={styleApp.TextInput}	
-					/>
-					<Divider/>
-				    
-				    <TextInput
-					    label="Nominal"
-					    value={thousandFormat(this.state.nominal)}
-					    disabled
-					    onChangeText={text => this.setState({nominal: text})}
-					    style={styleApp.TextInput}																														
-				    />
-				    <Divider/>
-				    
-			    </ScrollView>
-
-			    <Button 
-			    	mode="contained"
-			    	icon="content-save-outline" 
-			    	onPress={() => this.onSubmit()}
-			    	disabled={this.state.isLoading}
-			    	style={styleApp.Button}
-			    >
-				    Save
-				</Button>*/}
 
 
 			</PaperProvider>

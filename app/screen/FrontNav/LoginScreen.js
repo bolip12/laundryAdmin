@@ -4,7 +4,7 @@ import { Headline, Text, TextInput, HelperText, List, Checkbox, Button } from 'r
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import store from '../../config/storeApp';
@@ -27,11 +27,15 @@ class LoginScreen extends ValidationComponent {
 	    	loginAuto: 'checked',
 	    };
 
-	    this.fs = firebase.firestore();
 	}
 
 	componentDidMount() {
+		/*BackHandler.addEventListener('hardwareBackPress', this.onBackButtonPress);*/
 		this.defaultValue();
+	}
+
+	onBackButtonPress = () => {
+	        return true;
 	}
 
 	async defaultValue() {
@@ -69,82 +73,47 @@ class LoginScreen extends ValidationComponent {
 		    }
 
 		    //login process
-		    const self = this;
-		    await firebase.auth()
-		      .signInWithEmailAndPassword(this.state.email, this.state.password)
-		      .then((response) => {
+			const { user, session, error } = await supabase.auth.signIn({
+	            email: this.state.email,
+	            password: this.state.password,
+	        })
 
-		      	const userLogin = firebase.auth().currentUser;
-		      	const uid = userLogin.uid;
-        		const emailVerified = userLogin.emailVerified;
+			if(error) {
+	            store.dispatch({
+	              type: 'NOTIF',
+	              payload: { notifDisplay:true, notifType:'error', notifMessage:error.message }
+	            });
 
-        		//email verified
-				if(emailVerified) {
+        	} else {
+        		//const uid = user.id;
 
-					this.fs.collection('user').doc(uid).get().then((doc) => {
-		          	let docData = doc.data();
-		          	let isAdmin = docData.isAdmin;
-		          	
-			          	if (isAdmin) {
+				const { data:user_data, error, count }  = await supabase
+				.from('user')
+				.select('id, is_admin')
+				.eq('email', this.state.email)
+				.single();
+	          	
+		          	if (user_data.is_admin) {
+					
+				        store.dispatch({
+					        type: 'LOGIN',
+					        payload: { isLogin:true}
+				    	}); 
 
-		            	//update first login
-							this.fs.collection("user").doc(uid).update({firstLogin:false});
+				    } else {
+				    	store.dispatch({
+				            type: 'NOTIF',
+				            payload: { notifDisplay:true, notifType:'error', notifMessage:'User Bukan Admin' }
+				          });
+				    }
 
-					        store.dispatch({
-						        type: 'LOGIN',
-						        payload: { isLogin:true}
-					    	}); 
-
-					    } else {
-					    	store.dispatch({
-					            type: 'NOTIF',
-					            payload: { notifDisplay:true, notifType:'error', notifMessage:'User Bukan Admin' }
-					          });
-					    }
-
-					    store.dispatch({
-				            type: 'LOADING',
-				            payload: { isLoading:false }
-				        });
-			        });
-
-		        //email not verified
-		        } else {
-		          this.setState({ isLoading:false });
-		          store.dispatch({
-		            type: 'NOTIF',
-		            payload: { notifDisplay:true, notifType:'error', notifMessage:'Email Belum Diverifikasi' }
-		          });
-		        }
-
-		        store.dispatch({
+			    store.dispatch({
 		            type: 'LOADING',
 		            payload: { isLoading:false }
 		        });
-		      })
-		      .catch(error => {
-
-		      	let errorMessage = '';
-		        if(error.code == 'auth/user-not-found' || error.code == 'auth/wrong-password') {
-		          errorMessage = 'Email & Password tidak cocok';
-		        } else if(error.code == 'auth/too-many-requests') {
-		          errorMessage = 'Terlalu banyak login gagal, coba lagi beberapa saat';
-		        } else {
-		          errorMessage = error.message;
-		        }
-
-		        store.dispatch({
-		            type: 'LOADING',
-		            payload: { isLoading:false }
-		        });
-		        store.dispatch({
-		            type: 'NOTIF',
-		            payload: { notifDisplay:true, notifType:'error', notifMessage:errorMessage }
-		        });
-		    });
+		    }
 		}
 	}
-
 
 	passwordDisplay() {
 		let passwordIcon = this.state.passwordIcon == 'eye' ? 'eye-off-outline' : 'eye';

@@ -3,18 +3,20 @@ import { View, FlatList, Alert, Text, ScrollView, Dimensions } from 'react-nativ
 import { Provider as PaperProvider, Appbar, List, Checkbox, Divider, Button, Chip, Subheading, IconButton, Colors } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import store from '../../config/storeApp';
 import styleApp from '../../config/styleApp.js';
 import dateFilterFormat from '../../comp/dateFilterFormat.js';
 import dateFormat from '../../comp/dateFormat.js';
+import dateFormatSupa from '../../comp/dateFormatSupa.js';
 import dateFormatShort from '../../comp/dateFormatShort.js';
 import DateTimeInput from '../../comp/dateTimeInput.js';
 import thousandFormat from '../../comp/thousandFormat.js';
 import clearThousandFormat from '../../comp/clearThousandFormat.js';
 import FormBottom from '../../comp/formBottom.js';
 import checkRangeDate from '../../comp/checkRangeDate.js';
+import dateFormatBayar from '../../comp/dateFormatBayar.js';
 
 class PaymentHistoryScreen extends ValidationComponent {
 
@@ -34,8 +36,12 @@ class PaymentHistoryScreen extends ValidationComponent {
 	        EndDate:new Date(),
       		
       		formDisplayFilter: false,
+
+      		currPage: 1,
+	    	perPage: 5,
+	    	disabledPage: false,
     	};
-    	this.db = firebase.firestore().collection('database').doc(this.state.dbid);
+ 
  	}
 
 	componentDidMount() {
@@ -55,6 +61,9 @@ class PaymentHistoryScreen extends ValidationComponent {
 	    	this.fetchData();
 	    }
 
+	    if(prevState.currPage !== this.state.currPage && this.state.currPage !== 1) {
+	      this.fetchData();
+	    }
 		
 	}
  		
@@ -71,37 +80,29 @@ class PaymentHistoryScreen extends ValidationComponent {
 		} else {
 			StartDate = this.state.StartDate;
 		}
-        const StartDateFilter = dateFilterFormat(StartDate);
+        const StartDateFilter = dateFormatBayar(StartDate);
         
         const EndDate = this.state.EndDate;
-        const EndDateFilter = dateFilterFormat(EndDate);
+        const EndDateFilter = dateFormatBayar(EndDate);
 
-		//query
-		let query = firebase.firestore().collection('userLicense')
-					.where('tanggalAkhir', '>=', StartDateFilter)
-					.where('tanggalAkhir', '<=', EndDateFilter)
-					.where('statusLicense', '==', 'sudahDisetujui')
-		
-	    //data
-	    const dataList = [];
+        let rangeStart = 0;
+		let rangeEnd = (this.state.currPage * this.state.perPage) - 1;
 
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  
-		  dataList.push({
-		  	id : doc.id,
-		  	nama: docData.nama,
-		  	namaUsaha: docData.namaUsaha,
-		  	nominal: docData.nominal,
-		  	statusBayar: docData.statusBayar,
-		  	tanggalMulai: docData.tanggalMulai,
-		  	tanggalAkhir: docData.tanggalAkhir,
-		  });
-		});
+        let { data, error, count } = await supabase
+		      .from('user_license')
+		      .select('id, user_id, user:user_id ( nama, nama_usaha, telepon ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar', {count:'exact'})
+		      .eq('status_license', 'approved')
+		      .gte('tanggal_bayar', StartDateFilter)
+		      .lte('tanggal_bayar', EndDateFilter)
+		      .range(rangeStart, rangeEnd)
+
+		let disabledPage = false
+	   		if(rangeEnd >= (count-1)) {
+	   		disabledPage = true
+	   	}
 
 		//result
-		this.setState({dataList:dataList, StartDate:StartDate, EndDate:EndDate});
+		this.setState({dataList:data, StartDate:StartDate, EndDate:EndDate, StartDateFilter:StartDateFilter, EndDateFilter:EndDateFilter, disabledPage:disabledPage});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -118,13 +119,23 @@ class PaymentHistoryScreen extends ValidationComponent {
 		}
 	}
 
+	vieMoreButton() {
+		if(this.state.disabledPage) {
+	    	return false;
+		} else {
+			return (<Button icon="arrow-down" mode="text" onPress={() => this.setState({currPage:this.state.currPage+1})} style={{ margin:5 }}>
+		              View More
+		            </Button>);
+		}
+	}
+
 	onDescription(item) {
 	    return(
 		    <View>
 
 		      <View>
-		      	<Chip icon="calendar-import" mode="outlined" style={{marginTop:5, borderColor:'white'}} textStyle={{fontSize:12}}>Mulai: {dateFormat(item.tanggalMulai)} </Chip>
-		      	<Chip icon="calendar-export" mode="outlined" style={{marginTop:5, borderColor:'white'}} textStyle={{fontSize:12}}>Akhir: {dateFormat(item.tanggalAkhir)}</Chip>
+		      	<Chip icon="calendar-import" mode="outlined" style={{marginTop:5, borderColor:'white'}} textStyle={{fontSize:12}}>Mulai: {dateFormatSupa(item.tanggal_mulai)} </Chip>
+		      	<Chip icon="calendar-export" mode="outlined" style={{marginTop:5, borderColor:'white'}} textStyle={{fontSize:12}}>Akhir: {dateFormatSupa(item.tanggal_akhir)}</Chip>
 		      </View>
 		    </View>
 	    );
@@ -175,10 +186,12 @@ class PaymentHistoryScreen extends ValidationComponent {
                   data={this.state.dataList}
                   keyExtractor={(item) => item.id}
                   style={styleApp.FlatList}
+                  ItemSeparatorComponent={() => <Divider />}
+                  ListFooterComponent={() => this.vieMoreButton()}
                   renderItem={({ item }) => (
                     <View>
                     	<List.Item
-			              title={item.nama+' ('+item.namaUsaha+')'}
+			              title={item.user.nama+' ('+item.user.nama_usaha+')'}
 			              titleStyle={{fontSize:17, fontWeight:'bold'}}
 			              description={() => this.onDescription(item)}
 		             	  right={() => <Subheading style={styleApp.Subheading}>{item.nominal == 0 ? 'Gratis' : thousandFormat(item.nominal)}</Subheading>}

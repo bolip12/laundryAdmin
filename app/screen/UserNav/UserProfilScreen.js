@@ -2,11 +2,12 @@ import React from 'react';
 import { ScrollView, FlatList, View, StyleSheet } from 'react-native';
 import { Provider as PaperProvider, Appbar, List, Colors, Caption, Badge, Menu, Divider, Button, Text, Subheading, Chip, TouchableRipple, TextInput} from 'react-native-paper';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import store from '../../config/storeApp';
 import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import dateFormat from '../../comp/dateFormat.js';
+import dateTimeFormatSupa from '../../comp/dateTimeFormatSupa.js';
 
 class UserProfilScreen extends React.Component {
 
@@ -36,34 +37,33 @@ class UserProfilScreen extends React.Component {
     this.fetchData();
   }
 
-  fetchData() {
+  async fetchData() {
       store.dispatch({
             type: 'LOADING',
             payload: { isLoading:true }
         });
 
-      const userId = this.props.route.params.userId;
+      const user_id = this.props.route.params.user_id;
       
-      let self = this;
-      firebase.firestore().collection('user').doc(userId).get()
-      .then(function(doc) {
-        if (doc.exists) {
-          const docData = doc.data();
-          
-          self.setState({ 
-            namaUsaha: docData.namaUsaha,
-            telepon: docData.telepon,
-            email: docData.email,
-            alamat: docData.alamat,
-            licenseDate: docData.licenseDate,
-          });
-        }
+      let { data, error } = await supabase
+          .from('user')
+          .select('id, email, nama_usaha, telepon, license_date')          
+          .eq('id', user_id)
+          .single()
 
-        store.dispatch({
-              type: 'LOADING',
-              payload: { isLoading:false }
-        });
+      this.setState({
+        email:data.email, 
+        nama_usaha:data.nama_usaha,  
+        telepon:data.telepon,  
+        license_date:data.license_date,
+        
       });
+
+      store.dispatch({
+            type: 'LOADING',
+            payload: { isLoading:false }
+      });
+    
   }
 
 
@@ -81,7 +81,7 @@ class UserProfilScreen extends React.Component {
             <TextInput
               label="Nama Usaha"
               disabled
-              value={this.state.namaUsaha}
+              value={this.state.nama_usaha}
               style={styleApp.TextInput}                                                                                                                                                                                                                                                                                                              
             />
             <Divider />
@@ -102,18 +102,18 @@ class UserProfilScreen extends React.Component {
             />
             <Divider />
 
-            <TextInput
+           {/* <TextInput
               label="Alamat"
               disabled
               value={this.state.alamat}
               style={styleApp.TextInput}                                                                                                                                                                                                                                                                                                              
             />
-            <Divider />
+            <Divider />*/}
 
             <TextInput
               label="License Date"
               disabled
-              value={dateFormat(this.state.licenseDate)}
+              value={dateTimeFormatSupa(this.state.license_date)}
               style={styleApp.TextInput}                                                                                                                                                                                                                                                                                                              
             />
             <Divider />

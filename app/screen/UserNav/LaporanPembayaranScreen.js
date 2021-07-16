@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { View, FlatList, Alert, Text, ScrollView, Dimensions } from 'react-native';
-import { Provider as PaperProvider, Appbar, List, Checkbox, Divider, Button, Chip, Subheading, IconButton, Colors } from 'react-native-paper';
+import { Provider as PaperProvider, Appbar, List, Checkbox, Divider, Button, Chip, Subheading, IconButton, Colors, Searchbar } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import store from '../../config/storeApp';
 import styleApp from '../../config/styleApp.js';
@@ -15,6 +15,8 @@ import thousandFormat from '../../comp/thousandFormat.js';
 import clearThousandFormat from '../../comp/clearThousandFormat.js';
 import FormBottom from '../../comp/formBottom.js';
 import checkRangeDate from '../../comp/checkRangeDate.js';
+import dateFormatBayar from '../../comp/dateFormatBayar.js';
+import dateFormatSupa from '../../comp/dateFormatSupa.js';
 
 class LaporanPemabayaranScreen extends ValidationComponent {
 
@@ -34,8 +36,10 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 	        EndDate:new Date(),
       		
       		formDisplayFilter: false,
+
+      		inputSearch: '',
     	};
-    	this.db = firebase.firestore().collection('database').doc(this.state.dbid);
+    	
  	}
 
 	componentDidMount() {
@@ -50,6 +54,10 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 		if(prevState.EndDate !== this.state.EndDate) {
 	    	this.fetchData();
 		}*/
+
+		if(prevState.inputSearch !== this.state.inputSearch) {
+			this.fetchData();
+		}
 
 		if(prevState.formDisplayFilter !== this.state.formDisplayFilter && !this.state.formDisplayFilter) {
 	    	this.fetchData();
@@ -71,35 +79,30 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 		} else {
 			StartDate = this.state.StartDate;
 		}
-        const StartDateFilter = dateFilterFormat(StartDate);
+        const StartDateFilter = dateFormatBayar(StartDate);
         
         const EndDate = this.state.EndDate;
-        const EndDateFilter = dateFilterFormat(EndDate);
+        const EndDateFilter = dateFormatBayar(EndDate);
 
-		//query
-		let query = firebase.firestore().collection('userLicense')
-					.where('tanggalBayar', '>=', StartDateFilter)
-					.where('tanggalBayar', '<=', EndDateFilter)
-		
-	    //data
-	    const dataList = [];
+        let keyword = this.state.inputSearch.toLowerCase();
+        
+        /*let { data, error } = await supabase
+		      .from('user_license')
+		      .select('id, user:user_id (nama, nama_usaha, keyword), nominal, status_license, status_bayar, tanggal_bayar')
+		      .like('user.keyword', '%'+keyword+'%')
+		      .gte('tanggal_bayar', StartDateFilter)
+		      .lte('tanggal_bayar', EndDateFilter)
+		      console.log(data)*/
 
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  
-		  dataList.push({
-		  	id : doc.id,
-		  	nama: docData.nama,
-		  	namaUsaha: docData.namaUsaha,
-		  	nominal: docData.nominal,
-		  	statusLicense: docData.statusLicense,
-		  	tanggalBayar: docData.tanggalBayar,
-		  });
-		});
-
+      	let { data, error } = await supabase
+			      .rpc('admin_pembayaran_laporan', { 
+			      	keyword_filter: keyword,
+			      	startdate_filter: StartDateFilter, 
+			      	enddate_filter: EndDateFilter 
+			      })
+	
 		//result
-		this.setState({dataList:dataList, StartDate:StartDate, EndDate:EndDate});
+		this.setState({dataList:data, StartDate:StartDate, EndDate:EndDate});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -119,7 +122,7 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 	onRight(item) {
 		let valueStatusLicense = '';
 		let colorStatusLicense = '';
-		if(item.statusLicense == 'sudahDisetujui') {
+		if(item.status_license == 'approved') {
 			valueStatusLicense = 'Sudah Disetujui';
 			colorStatusLicense = 'green';
 		} else {
@@ -130,7 +133,7 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 
 	    return(
 	      <View>
-	      <Subheading style={styleApp.Subheading}>{item.nominal == 0 ? 'Gratis' : dateFormat(item.tanggalBayar)}</Subheading>
+	      <Subheading style={styleApp.Subheading}>{item.nominal == 0 ? 'Gratis' : dateFormatSupa(item.tanggal_bayar)}</Subheading>
 	       <Chip mode="outlined" style={{marginTop:5, borderColor:colorStatusLicense, justifyContent: "center", alignItems: "center"}} textStyle={{color:colorStatusLicense, fontSize:13}}>{valueStatusLicense}</Chip>
 
 	      </View>
@@ -157,7 +160,16 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 
                 </View>
 
-			   <FlatList
+                <Searchbar
+		            placeholder='Cari Nama'
+		            fontSize={15}
+		            onChangeText={(text) => this.setState({ inputSearch: text })}
+		            value={this.state.inputSearch}
+		            //onEndEditing={() => this.fetchData(this.state.kategoriId)}
+		        />
+
+			   {this.state.dataList &&
+			   	<FlatList
 			      keyboardShouldPersistTaps="handled"
                   data={this.state.dataList}
                   keyExtractor={(item) => item.id}
@@ -165,7 +177,7 @@ class LaporanPemabayaranScreen extends ValidationComponent {
                   renderItem={({ item }) => (
                     <View>
                     	<List.Item
-			              title={item.nama+' ('+item.namaUsaha+')'}
+			              title={item.nama+' ('+item.nama_usaha+')'}
 			              titleStyle={{fontSize:17, fontWeight:'bold'}}
 			              description={thousandFormat(item.nominal)}
 			              descriptionStyle={{fontSize:15, fontWeight:'bold'}}
@@ -177,9 +189,12 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 
                   )}
                 /> 
+            	}
+
+
 
                 <FormBottom
-		        	title="Rentang Tanggal Akhir"
+		        	title="Rentang Tanggal Bayar"
 		        	display={this.state.formDisplayFilter}
 		        	onToggleForm={status => this.toggleFormFilter()}
 		        >

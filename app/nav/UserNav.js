@@ -78,7 +78,7 @@ class UserNav extends React.Component {
             <BottomTab.Screen 
               name="PaymentScreen"
               options={{
-                tabBarLabel: 'Payment',
+                tabBarLabel: 'Verifikasi',
                 tabBarIcon: ({color}) => (
                   <MaterialCommunityIcons name="cash" color={color} size={27} />)
               }}

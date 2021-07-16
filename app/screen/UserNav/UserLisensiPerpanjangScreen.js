@@ -3,7 +3,7 @@ import { ScrollView, View, FlatList, Alert, Text } from 'react-native';
 import { Provider as PaperProvider, Appbar, TextInput, Button, HelperText, Divider, Portal, Dialog, List, Caption, Subheading, Chip } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import store from '../../config/storeApp';
@@ -76,59 +76,43 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 	}*/
 
 	async fetchDataBank() {
-		store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:true }
-        });
-        
-		let query = firebase.firestore().collection('referensi').doc('bank').collection('bank');
 
-	    //data
-	    const bankData = [];
+		let { data:bank_data, error } = await supabase
+		      .from('ref_bank')
+		      .select('id, nama, rek_no, rek_nama')
 
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  bankData.push({
-		  	id: doc.id,
-            nama : docData.nama,
-            rekNo : docData.rekNo,
-            rekNama : docData.rekNama,
-		  });
-		});
-
-	    this.setState({ bankData: bankData });
+	    this.setState({ bankData: bank_data });
+	   	
 	}
 
 	async fetchDataPaket() {
 		
-        let licenseDate = this.props.route.params.licenseDate;
+        let license_date = this.props.route.params.license_date;
         let randomNominal = Math.floor(Math.random() * (99 - 10 + 1) ) + 10;
 
-		let query = firebase.firestore().collection('referensi').doc('lisensiPaket').collection('lisensiPaket');
+		//let harga = docData.harga + randomNominal;
 
-	    //data
-	    const paketData = [];
+        let paketData = [];
+	    let { data, error } = await supabase
+		      .from('ref_license_paket')
+		      .select('id, nama, harga, harga_bulanan, durasi')
 
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
+		data.map(doc => {
 
-		  let licenseDateNew = new Date(licenseDate.seconds * 1000);
-		  licenseDateNew.setDate(licenseDateNew.getDate() + docData.durasi);
-
-		  let harga = docData.harga + randomNominal;
+		let licenseDateNew = new Date(license_date);
+		licenseDateNew.setDate(licenseDateNew.getDate() + doc.durasi);
 
 		  paketData.push({
 		  	id: doc.id,
-            nama : docData.nama,
-            harga : harga,
-            hargaBulanan : docData.hargaBulanan,
-            durasi : docData.durasi,
-            licenseDate: licenseDate,
+            nama : doc.nama,
+            harga : doc.harga + randomNominal,
+            harga_bulanan : doc.hargaBulanan,
+            durasi : doc.durasi,
+            licenseDate: license_date,
             licenseDateNew: licenseDateNew,
 		  });
 		});
+		
 
 	    this.setState({ paketData: paketData });
 
@@ -139,12 +123,13 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 	   	
 	}
 
+
 	onClose() {
 
-		let userId = this.props.route.params.userId;
+		let user_id = this.props.route.params.user_id;
 		
 		this.setState({dialogDisplay:false});
-	    this.props.navigation.push('UserLisensiScreen', {userId:userId});
+	    this.props.navigation.push('UserLisensiScreen', {user_id:user_id});
 	}
 
 	onSelectConfirm(harga, licenseDateNew) {
@@ -163,33 +148,38 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 		
 		if(this.isFormValid()) {
 			
-			let userId = this.props.route.params.userId;
+			let user_id = this.props.route.params.user_id;
 			let nama = this.props.route.params.nama;
-			let namaUsaha = this.props.route.params.namaUsaha;
-			let licenseDate = this.props.route.params.licenseDate;
+			let nama_usaha = this.props.route.params.nama_usaha;
+			let license_date = this.props.route.params.license_date;
 
-			let tanggalMulai = ''; 
-				tanggalMulai = dateFilterFormat(new Date(licenseDate.seconds * 1000));
-				tanggalMulai.setDate(tanggalMulai.getDate() + 1);
+			let tanggal_mulai = ''; 
+				tanggal_mulai = dateFilterFormat(new Date(license_date));
+				tanggal_mulai.setDate(tanggal_mulai.getDate() + 1);
 
-			let tanggalAkhir = dateFilterFormat(licenseDateNew);
+			let tanggal_akhir = dateFilterFormat(licenseDateNew);
 			let nominal = harga;
 
+			let currTime = new Date();
+	        let result = [];
 
-			const dataInsert = { 
-								 userId: userId,
-								 namaUsaha: namaUsaha,
-								 nama: nama,
-								 tanggalMulai: tanggalMulai, 
-								 tanggalAkhir: tanggalAkhir, 
-								 nominal: clearThousandFormat(nominal),
-								 statusBayar: 'belumBayar',
-								 statusLicense: 'belumDisetujui'
-								};
-
-			await firebase.firestore().collection('userLicense').doc().set(dataInsert);
 			
+				result = await supabase
+				  .from('user_license')
+				  .insert([{ 	
+			  				user_id: user_id,
+			  				tanggal_mulai: tanggal_mulai, 
+							tanggal_akhir: tanggal_akhir, 
+							nominal: clearThousandFormat(nominal),
+							status_bayar: 'not_paid',
+							status_license: 'not_approved',
+			  				_created_at:currTime, 
+					    	/*_created_by:this.state.uid,
+					    	_updated_by:this.state.uid,*/
+					    }]);
+
 			this.setState({dialogDisplay:true, displayHarga:harga});
+			
 		
 	    }
 	}
@@ -213,52 +203,6 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 	    );
 	}
 
-
-	/*async onSubmit() {
-		this.validate({
-			tanggalMulai: {required:true},
-			tanggalAkhir: {required:true},
-			nominal: {required:true},
-		});
-
-
-		if(this.isFormValid()) {
-			store.dispatch({
-	            type: 'LOADING',
-	            payload: { isLoading:true }
-	        });
-
-			let userId = this.props.route.params.userId;
-
-			const dataInsert = { 
-								 userId: userId,
-								 namaUsaha: this.state.namaUsaha,
-								 nama: this.state.nama,
-								 tanggalMulai: this.state.tanggalMulai, 
-								 tanggalAkhir: this.state.tanggalAkhir, 
-								 nominal: clearThousandFormat(this.state.nominal),
-								 statusBayar: 'belumBayar',
-								 statusLicense: 'belumDisetujui'
-								};
-			await firebase.firestore().collection('userLicense').doc().set(dataInsert);
-
-			store.dispatch({
-	            type: 'LOADING',
-	            payload: { isLoading:false }
-	        });
-
-	         store.dispatch({
-	            type: 'NOTIF',
-	            payload: { notifDisplay:true, notifMessage:'Data berhasil disimpan' }
-	        });
-
-	        this.props.navigation.navigate('UserLisensiScreen');
-		}
-	}
-
-	getRandomInt(max=100) {
-	  return Math.floor(Math.random() * Math.floor(max));
-	}*/
 
 	render() {
 	    return (
@@ -309,7 +253,7 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 				              renderItem={({ item }) => (
 		                    	<List.Item
 					              title={item.nama}
-					              description={item.rekNo+'\n'+item.rekNama}
+					              description={item.rek_no+'\n'+item.rek_nama}
 					              style={{ marginTop:-15 }}
 					            />
 				              )}

@@ -1,14 +1,15 @@
 import * as React from 'react';
 import { View, FlatList, Alert, Text, ScrollView, Dimensions } from 'react-native';
-import { Provider as PaperProvider, Appbar, List, Checkbox, Divider, Button, Chip, Subheading, IconButton, Colors, Caption } from 'react-native-paper';
+import { Provider as PaperProvider, Appbar, List, Checkbox, Divider, Button, Chip, Subheading, IconButton, Colors, Caption, Searchbar } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import store from '../../config/storeApp';
 import styleApp from '../../config/styleApp.js';
 import dateFilterFormat from '../../comp/dateFilterFormat.js';
 import dateFormat from '../../comp/dateFormat.js';
+import dateTimeFormatSupa from '../../comp/dateTimeFormatSupa.js';
 import dateFormatShort from '../../comp/dateFormatShort.js';
 import DateTimeInput from '../../comp/dateTimeInput.js';
 import thousandFormat from '../../comp/thousandFormat.js';
@@ -34,8 +35,13 @@ class LaporanLisensiScreen extends ValidationComponent {
 	        EndDate:new Date(),
       		
       		formDisplayFilter: false,
+
+      		inputSearch: '',
+	    	currPage: 1,
+	    	perPage: 5,
+	    	disabledPage: false,
     	};
-    	this.db = firebase.firestore().collection('database').doc(this.state.dbid);
+    	
  	}
 
 	componentDidMount() {
@@ -51,10 +57,17 @@ class LaporanLisensiScreen extends ValidationComponent {
 	    	this.fetchData();
 		}*/
 
-		if(prevState.formDisplayFilter !== this.state.formDisplayFilter && !this.state.formDisplayFilter) {
+		/*if(prevState.formDisplayFilter !== this.state.formDisplayFilter && !this.state.formDisplayFilter) {
 	    	this.fetchData();
-	    }
+	    }*/
 
+	    if(prevState.inputSearch !== this.state.inputSearch) {
+			this.fetchData();
+		}
+
+	     if(prevState.currPage !== this.state.currPage && this.state.currPage !== 1) {
+	      this.fetchData();
+	    }
 		
 	}
  		
@@ -65,41 +78,36 @@ class LaporanLisensiScreen extends ValidationComponent {
             payload: { isLoading:true }
         });
 
-        let StartDate = new Date();
+        /*let StartDate = new Date();
 		if(this.state.StartDate == '') {
 			StartDate.setDate(StartDate.getDate() - 7);
 		} else {
 			StartDate = this.state.StartDate;
 		}
-        const StartDateFilter = dateFilterFormat(StartDate);
-        
+        const StartDateFilter = dateFormat(StartDate);
         const EndDate = this.state.EndDate;
-        const EndDateFilter = dateFilterFormat(EndDate);
+        const EndDateFilter = dateFormat(EndDate);*/
 
-		//query
-		let query = firebase.firestore().collection('user')
-					.where('licenseDate', '>=', StartDateFilter)
-					.where('licenseDate', '<=', EndDateFilter)
+        let keyword = this.state.inputSearch.toLowerCase();
+        let rangeStart = 0;
+		let rangeEnd = (this.state.currPage * this.state.perPage) - 1;
+      
+	    let { data, error, count } = await supabase
+	          .from('user')
+	          .select('id, nama, nama_usaha, email, license_date, telepon', {count:'exact'})
+	          .like('keyword', '%'+keyword+'%')
+	          .range(rangeStart, rangeEnd)
+
+	         /* .gte('license_date', StartDateFilter)
+		      .lte('license_date', EndDateFilter)*/
 		
-	    //data
-	    const dataList = [];
-
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  
-		  dataList.push({
-		  	id : doc.id,
-		  	nama: docData.nama,
-		  	namaUsaha: docData.namaUsaha,
-		  	licenseDate: docData.licenseDate,
-		  	email: docData.email,
-		  	telepon: docData.telepon,
-		  });
-		});
+		let disabledPage = false
+	   		if(rangeEnd >= (count-1)) {
+	   		disabledPage = true
+	   	}
 
 		//result
-		this.setState({dataList:dataList, StartDate:StartDate, EndDate:EndDate});
+		this.setState({dataList:data, disabledPage:disabledPage /*StartDate:StartDate, EndDate:EndDateFilter*/});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -113,6 +121,16 @@ class LaporanLisensiScreen extends ValidationComponent {
 	onSetFilter() {
 		if(checkRangeDate(this.state.StartDate, this.state.EndDate, 31)) {
 			this.toggleFormFilter();
+		}
+	}
+
+	vieMoreButton() {
+		if(this.state.disabledPage) {
+	    	return false;
+		} else {
+			return (<Button icon="arrow-down" mode="text" onPress={() => this.setState({currPage:this.state.currPage+1})} style={{ margin:5 }}>
+		              View More
+		            </Button>);
 		}
 	}
 
@@ -133,7 +151,7 @@ class LaporanLisensiScreen extends ValidationComponent {
 			    </Appbar.Header>
 			    
 
-		        <View style={{ backgroundColor: '#ffffff' }}>
+		        {/*<View style={{ backgroundColor: '#ffffff' }}>
                 	<List.Item
 		              title={dateFormat(this.state.StartDate)+' '+'-'+' '+dateFormat(this.state.EndDate)}
 		              titleStyle={{fontSize:17, fontWeight:'bold'}}
@@ -142,21 +160,32 @@ class LaporanLisensiScreen extends ValidationComponent {
 		            />
 		            <Divider />
 
-                </View>
+                </View>*/}
+
+                <Searchbar
+		            placeholder='Cari Nama'
+		            fontSize={15}
+		            onChangeText={(text) => this.setState({ inputSearch: text })}
+		            value={this.state.inputSearch}
+		            //onEndEditing={() => this.fetchData(this.state.kategoriId)}
+		        />
+
 
 			   <FlatList
 			      keyboardShouldPersistTaps="handled"
                   data={this.state.dataList}
                   keyExtractor={(item) => item.id}
                   style={styleApp.FlatList}
+                  ItemSeparatorComponent={() => <Divider />}
+                  ListFooterComponent={() => this.vieMoreButton()}
                   renderItem={({ item }) => (
                     <View>
                     	<List.Item
-			              title={item.nama+' ('+item.namaUsaha+')'}
+			              title={item.nama+' ('+item.nama_usaha+')'}
 			              titleStyle={{fontSize:17, fontWeight:'bold'}}
 			              description={() => this.onDesc(item)}
 			              descriptionStyle={{fontSize:15, fontWeight:'bold'}}
-		             	  right={() => <Subheading style={styleApp.Subheading}>{dateFormat(item.licenseDate)}</Subheading>}
+		             	  right={() => <Subheading style={styleApp.Subheading}>{dateTimeFormatSupa(item.license_date)}</Subheading>}
 		             	 
 			            />
 			           <Divider />

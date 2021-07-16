@@ -2,19 +2,20 @@ import * as React from 'react';
 import { View, FlatList, Alert, Text, ScrollView } from 'react-native';
 import { Provider as PaperProvider, Appbar, Searchbar, List, Divider, Chip, Portal, Caption, Subheading, Dialog, TextInput, Button, IconButton, Badge, RadioButton } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
+import { showMessage } from "react-native-flash-message";
 
-import firebase from '../../config/firebase.js';
+import supabase from '../../config/supabase.js';
 import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import store from '../../config/storeApp';
 
 import PickerInput from '../../comp/pickerInput.js';
 import FormBottom from '../../comp/formBottom.js';
-import FormBottomRadio from '../../comp/formBottom.js';
-import FormBottomBayar from '../../comp/formBottom.js';
 import thousandFormat from '../../comp/thousandFormat.js';
 import clearThousandFormat from '../../comp/clearThousandFormat.js';
 import dateFormat from '../../comp/dateFormat.js';
+import dateFormatBayar from '../../comp/dateFormatBayar.js';
+import dateFormatSupa from '../../comp/dateFormatSupa.js';
 import dateFormatShort from '../../comp/dateFormatShort.js';
 import dateFilterFormat from '../../comp/dateFilterFormat.js';
 
@@ -38,19 +39,18 @@ class UserLisensiScreen extends ValidationComponent {
 	    	
 	    };
 
-	    this.db = firebase.firestore().collection('database').doc(this.state.dbid);
 	}
 
 	componentDidUpdate(prevProps, prevState) {
-	    if(prevState.notifDisplay !== this.state.notifDisplay) {
+	   /* if(prevState.notifDisplay !== this.state.notifDisplay) {
 	      this.fetchData();
-	    }
+	    }*/
 	}
 
 
 	componentDidMount() {
-		this.fetchData();
-		this.fetchDataBank();
+        this.fetchData();
+        this.fetchDataBank();
 	}
 
 	async fetchData() {
@@ -59,33 +59,16 @@ class UserLisensiScreen extends ValidationComponent {
             payload: { isLoading:true }
         });
 
-        let userId = this.props.route.params.userId;
+        let user_id = this.props.route.params.user_id;
 
-		//query
-		let query = firebase.firestore().collection('userLicense').where('userId', '==', userId).orderBy('tanggalMulai');
-
-	    //data
-	    const dataList = [];
-	    let statusBayar = '';
-
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  dataList.push({
-		  	id : doc.id,
-		  	nama: docData.nama,
-		  	tanggalMulai: docData.tanggalMulai,
-		  	tanggalAkhir: docData.tanggalAkhir,
-		  	nominal: docData.nominal,
-		  	statusBayar: docData.statusBayar,
-		  	statusLicense: docData.statusLicense,
-		  });
-
-		  statusBayar = docData.statusBayar;
-		});
+        let { data, error } = await supabase
+		      .from('user_license')
+		      .select('id, user:user_id ( nama ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar')
+		      .eq('user_id', user_id)
+		      .order('tanggal_mulai', {ascending:false})
 
 		//result
-		this.setState({dataList:dataList, statusBayar:statusBayar});
+		this.setState({dataList:data});
 		store.dispatch({
             type: 'LOADING',
             payload: { isLoading:false }
@@ -95,24 +78,11 @@ class UserLisensiScreen extends ValidationComponent {
 
 	async fetchDataBank() {
 
-		let query = firebase.firestore().collection('referensi').doc('bank').collection('bank');
+		let { data:bank_data, error } = await supabase
+		      .from('ref_bank')
+		      .select('id, nama, rek_no, rek_nama')
 
-	    //data
-	    const bankData = [];
-
-	    const docList = await query.get();
-		docList.forEach(doc => {
-		  const docData = doc.data();
-		  bankData.push({
-		  	id: doc.id,
-            nama : docData.nama,
-            rekNama : docData.rekNama,
-            rekNo : docData.rekNo,
-		  });
-		});
-		
-
-	    this.setState({ bankData: bankData });
+	    this.setState({ bankData: bank_data });
 	   	
 	}
 
@@ -124,27 +94,45 @@ class UserLisensiScreen extends ValidationComponent {
 	            payload: { isLoading:true }
 	        });
 
-			const dataUpdate = { 
-								 statusBayar: 'sudahBayar',
-								 bank: this.state.radioChecked,
-								};
+			let currDate = dateFormatBayar(new Date());
+			
+			let response = await supabase
+							  .from('user_license')
+							  .update([{
+								    	status_bayar: 'paid',
+								 		bank_id: this.state.radioChecked,
+								 		tanggal_bayar: currDate,
+									}])
+							  .eq('id', this.state.docId);
 
-			await firebase.firestore().collection('userLicense').doc(this.state.docId).update(dataUpdate);
+			if(response.error) {
+		        showMessage({
+		          message: response.error.message,
+		          icon: 'warning',
+		          backgroundColor: 'red',
+		          color: theme.colors.background,
+		        });
 
-			store.dispatch({
+		    } else {
+
+		        showMessage({
+		          message: 'Data berhasil disimpan',
+		          icon: 'success',
+		          backgroundColor: theme.colors.primary,
+		          color: theme.colors.background,
+		        }); 
+		    }
+
+	        store.dispatch({
 	            type: 'LOADING',
 	            payload: { isLoading:false }
 	        });
 
-	         store.dispatch({
-	            type: 'NOTIF',
-	            payload: { notifDisplay:true, notifMessage:'Data berhasil disimpan' }
-	        });
-
 	        this.toggleForm();
-			
+	        this.fetchData();
 		}
 	}
+
 
 	toggleForm(docId) {
 	    this.setState({formDisplay: !this.state.formDisplay});
@@ -156,22 +144,22 @@ class UserLisensiScreen extends ValidationComponent {
 	onDesc(item) {
 		return(
 			<View>
-				<Caption style={{ fontSize: 14 }}>Tanggal Mulai: {dateFormat(item.tanggalMulai)}</Caption>
-				<Caption style={{ fontSize: 14 }}>Tanggal Akhir: {dateFormat(item.tanggalAkhir)}</Caption>
+				<Caption style={{ fontSize: 14 }}>Tanggal Mulai: {dateFormatSupa(item.tanggal_mulai)}</Caption>
+				<Caption style={{ fontSize: 14 }}>Tanggal Akhir: {dateFormatSupa(item.tanggal_akhir)}</Caption>
 			</View>
 		);
 	}
 	
 	onRight(item) {
 		let valueStatusBayar = '';
-		if(item.statusBayar == 'sudahBayar') {
+		if(item.status_bayar == 'paid') {
 			valueStatusBayar = 'Sudah Bayar';
 		}
 
 	    return(
 	      <View>
 	        <Subheading style={styleApp.Subheading}>{item.nominal == 0 ? 'Gratis' : thousandFormat(item.nominal)}</Subheading>
-	        { item.statusBayar == 'belumBayar' &&
+	        { item.status_bayar == 'not_paid' &&
  		  	<Button 
               onPress={() => this.toggleForm(item.id)}
               mode="contained" 
@@ -181,7 +169,7 @@ class UserLisensiScreen extends ValidationComponent {
             </Button>
             }
 
-            { item.statusBayar == 'sudahBayar' &&
+            { item.status_bayar == 'paid' &&
             <Chip mode="outlined" style={{ borderRadius: 3, height:37, marginTop:5, borderColor: 'green', justifyContent: "center", alignItems: "center"}} textStyle={{fontSize:13, color:'green'}}>{valueStatusBayar}</Chip>
         	}
 	      </View>
@@ -192,8 +180,8 @@ class UserLisensiScreen extends ValidationComponent {
 		return (
 			<View>
 				<Subheading>{item.nama}</Subheading>
-				<Caption>{item.rekNo}</Caption>
-				<Caption>{item.rekNama}</Caption>
+				<Caption>{item.rek_no}</Caption>
+				<Caption>{item.rek_nama}</Caption>
 			</View>
 		);
 	}
@@ -214,7 +202,7 @@ class UserLisensiScreen extends ValidationComponent {
                   renderItem={({ item }) => (
                     <View>
                     	<List.Item
-			              title={item.nama}
+			              title={item.user.nama}
 			              description={() => this.onDesc(item)}
 			              right={() => this.onRight(item)}
 			              //onPress={() => this.onSelect(item.id)}
@@ -224,11 +212,11 @@ class UserLisensiScreen extends ValidationComponent {
                   )}
                 />
 
-                { this.state.statusBayar != 'belumBayar' &&
+                { this.state.status_bayar != 'not_paid' &&
                 <Button 
 		            mode="contained"
 		            icon="plus" 
-		            onPress={() => this.props.navigation.navigate('UserLisensiPerpanjangScreen', {userId:this.props.route.params.userId, licenseDate:this.props.route.params.licenseDate, namaUsaha:this.props.route.params.namaUsaha, nama:this.props.route.params.nama})}
+		            onPress={() => this.props.navigation.navigate('UserLisensiPerpanjangScreen', {user_id:this.props.route.params.user_id, license_date:this.props.route.params.license_date, nama_usaha:this.props.route.params.nama_usaha, nama:this.props.route.params.nama})}
 		            disabled={this.state.isLoading}
 		            style={styleApp.Button}
 		         >
@@ -249,7 +237,7 @@ class UserLisensiScreen extends ValidationComponent {
 		              keyExtractor={(item) => item.id}
 		              style={{ backgroundColor:'#fff' }}
 		              renderItem={({ item }) => (
-		                <RadioButton.Item label={this.radioLabel(item)} value={item.nama} color={theme.colors.primary} />
+		                <RadioButton.Item label={this.radioLabel(item)} value={item.id} color={theme.colors.primary} />
 		              )}
 		            />
 		            </RadioButton.Group>
