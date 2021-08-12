@@ -92,7 +92,7 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 		      .like('user.keyword', '%'+keyword+'%')
 		      .gte('tanggal_bayar', StartDateFilter)
 		      .lte('tanggal_bayar', EndDateFilter)
-		      console.log(data)*/
+				*/
 
       	let { data, error } = await supabase
 			      .rpc('admin_pembayaran_laporan', { 
@@ -150,10 +150,10 @@ class LaporanPemabayaranScreen extends ValidationComponent {
 			    
 
 		        <View style={{ backgroundColor: '#ffffff' }}>
-                	<List.Item
+                <List.Item
 		              title={dateFormat(this.state.StartDate)+' '+'-'+' '+dateFormat(this.state.EndDate)}
 		              titleStyle={{fontSize:17, fontWeight:'bold'}}
-		              left={props => <List.Icon {...props} icon="magnify" color={Colors.green800}/>}
+		              left={props => <List.Icon {...props} icon="calendar" color={Colors.green800}/>}
 		              onPress={() => this.toggleFormFilter()}
 		            />
 		            <Divider />

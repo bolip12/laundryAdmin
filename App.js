@@ -5,6 +5,7 @@ import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 import firebase from './app/config/firebase';
 import theme from './app/config/theme';
 import store from './app/config/storeApp';
+import FlashMessage from "react-native-flash-message";
 
 import Loading from './app/comp/loading';
 import Notif from './app/comp/notif';
@@ -31,9 +32,12 @@ class App extends React.Component {
   render() {
     return (
       <PaperProvider theme={theme}>
-        {this.state.isLogin ? <UserNav /> : <LoginScreen />}
+        <UserNav />
+        {/*{this.state.isLogin ? <UserNav /> : <LoginScreen />}*/}
         <Loading />
-        <Notif />
+        {/*<Notif />*/}
+        
+        <FlashMessage position="top" floating={true} duration={3000} style={{borderRadius:30}}/>
       </PaperProvider>
     );
   }

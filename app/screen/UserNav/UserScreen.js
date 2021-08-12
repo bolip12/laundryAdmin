@@ -1,7 +1,8 @@
 import React from 'react';
 import { ScrollView, FlatList, View, StyleSheet } from 'react-native';
-import { Provider as PaperProvider, Appbar, List, Colors, Caption, Badge, Divider, IconButton, Menu, Button, Text, Subheading, Chip, TouchableRipple } from 'react-native-paper';
+import { Provider as PaperProvider, Appbar, List, Colors, Caption, Badge, Divider, IconButton, Menu, Button, Text, Subheading, Chip, TouchableRipple, Searchbar } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showMessage } from "react-native-flash-message";
 
 import supabase from '../../config/supabase.js';
 import store from '../../config/storeApp';
@@ -27,13 +28,35 @@ class UserScreen extends React.Component {
         dataList: [],
 
         openMenu: false,
+        inputSearch: '',
+        currPage: 1,
+        perPage: 5,
+        disabledPage: false,
         
       };
 
   }
 
+  componentDidUpdate(prevProps, prevState) {
+
+    if(prevState.inputSearch !== this.state.inputSearch) {
+      this.fetchData();
+    }
+
+    if(prevState.currPage !== this.state.currPage && this.state.currPage !== 1) {
+      this.fetchData();
+    }
+      
+  }
+
   componentDidMount() {
-    this.fetchData();
+      this._unsubscribe = this.props.navigation.addListener('focus', () => {
+        this.fetchData();
+      });
+  }
+
+  componentWillUnmount() {
+    this._unsubscribe();
   }
 
   async fetchData() {
@@ -42,10 +65,17 @@ class UserScreen extends React.Component {
         payload: { isLoading:true }
     });
 
-    let { data, error } = await supabase
+    let keyword = this.state.inputSearch.toLowerCase();
+    let rangeStart = 0;
+    let rangeEnd = (this.state.currPage * this.state.perPage) - 1;
+
+    let { data, error, count } = await supabase
           .from('user')
-          .select('id, nama, nama_usaha, email, license_date')          
+          .select('id, nama, nama_usaha, email, license_date', {count:'exact'})          
           .is('pid', null)
+          .like('keyword', '%'+keyword+'%')
+          .order('nama_usaha', { ascending: true })
+          .range(rangeStart, rangeEnd)
 
     //data
     let dataList = [];
@@ -53,13 +83,28 @@ class UserScreen extends React.Component {
       this.setState({['displayMenu'+row.id]:false})
     });
 
+    let disabledPage = false
+      if(rangeEnd >= (count-1)) {
+        disabledPage = true
+      }
+
     //result
-    this.setState({dataList:data});
+    this.setState({dataList:data, disabledPage:disabledPage});
     store.dispatch({
         type: 'LOADING',
         payload: { isLoading:false }
     });
 
+  }
+
+  vieMoreButton() {
+    if(this.state.disabledPage) {
+        return false;
+    } else {
+      return (<Button icon="arrow-down" mode="text" onPress={() => this.setState({currPage:this.state.currPage+1})} style={{ margin:5 }}>
+                  View More
+                </Button>);
+    }
   }
 
   onDesc(item) {
@@ -111,17 +156,21 @@ class UserScreen extends React.Component {
               }])
           .eq('id', docId);
 
-    if(response.error) {
-        store.dispatch({
-                type: 'NOTIF',
-                payload: { notifDisplay:true, notifType:'error', notifMessage:response.error.message }
-            });
+      if(response.error) {
+        showMessage({
+          message: response.error.message,
+          icon: 'warning',
+          backgroundColor: 'red',
+          color: theme.colors.background,
+        });
 
       } else {
-        store.dispatch({
-                type: 'NOTIF',
-                payload: { notifDisplay:true, notifMessage:'Logout berhasil' }
-            });
+        showMessage({
+          message: 'Clear Session Berhasil',
+          icon: 'success',
+          backgroundColor: theme.colors.primary,
+          color: theme.colors.background,
+        }); 
       }
 
     store.dispatch({
@@ -130,6 +179,16 @@ class UserScreen extends React.Component {
         });
 
   }
+
+  onSelect(user_id) {
+    this.props.navigation.navigate('UserListScreen');
+
+    store.dispatch({
+        type: 'USERTAB',
+        payload: {userTabId:user_id}
+    });
+  }
+
 
   render() {
     return (
@@ -140,26 +199,38 @@ class UserScreen extends React.Component {
           {/*<Appbar.Action icon="logout" color={theme.colors.primary} onPress={() => this.onLogout()} />*/}
         </Appbar.Header>
 
+        <Searchbar
+            placeholder='Cari Nama Usaha'
+            fontSize={15}
+            onChangeText={(text) => this.setState({ inputSearch: text })}
+            value={this.state.inputSearch}
+            selectionColor={theme.colors.accent}
+        />
+
         <FlatList
           keyboardShouldPersistTaps="handled"
           data={this.state.dataList}
           keyExtractor={(item) => item.id}
           style={styleApp.FlatList}
+          ListFooterComponent={() => this.vieMoreButton()}
           renderItem={({ item }) => (
             <View>
               <List.Item
                 title={item.nama_usaha}
+                onPress={() => this.onSelect(item.id)}
                 description={() => this.onDesc(item)}
                 left={props => <Badge style={{ backgroundColor: theme.colors.primary, margin: 10, marginBottom: 25 }} size={40}>{item.nama_usaha.charAt(0)}</Badge>}
-                right={() => <Menu
-                                visible={this.state.['displayMenu'+item.id]}
-                                onDismiss={() => this.toggleMenu(item.id)}
-                                anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}>
-                                <Menu.Item onPress={() => this.props.navigation.navigate('UserLisensiScreen', {user_id:item.id, nama_usaha:item.nama_usaha, nama:item.nama, license_date:item.license_date})} icon="account-check-outline" title="License" />
-                                <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffScreen', {user_id:item.id})} icon="account-group-outline" title="Staff" />
-                                <Menu.Item onPress={() => this.props.navigation.navigate('UserProfilScreen', {user_id:item.id})} icon="account-outline" title="Profile" />
-                                <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Macaddress" />
-                              </Menu>}
+                right={() => <IconButton icon="logout" onPress={() => this.onLogoutMacAddress(item.id)}/>}
+                
+                /*<Menu
+                  visible={this.state.['displayMenu'+item.id]}
+                  onDismiss={() => this.toggleMenu(item.id)}
+                  anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}>
+                  <Menu.Item onPress={() => this.props.navigation.navigate('UserLisensiScreen', {user_id:item.id, nama_usaha:item.nama_usaha, nama:item.nama, license_date:item.license_date})} icon="account-check-outline" title="License" />
+                  <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffScreen', {user_id:item.id})} icon="account-group-outline" title="Staff" />
+                  <Menu.Item onPress={() => this.props.navigation.navigate('UserProfilScreen', {user_id:item.id})} icon="account-outline" title="Profile" />
+                  <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Macaddress" />
+                </Menu>*/
               />
               <Divider />
             </View>

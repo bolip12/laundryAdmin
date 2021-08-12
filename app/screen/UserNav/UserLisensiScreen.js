@@ -59,7 +59,7 @@ class UserLisensiScreen extends ValidationComponent {
             payload: { isLoading:true }
         });
 
-        let user_id = this.props.route.params.user_id;
+        let user_id = this.state.userTabId;
 
         let { data, error } = await supabase
 		      .from('user_license')
@@ -105,7 +105,7 @@ class UserLisensiScreen extends ValidationComponent {
 									}])
 							  .eq('id', this.state.docId);
 
-			if(response.error) {
+				if(response.error) {
 		        showMessage({
 		          message: response.error.message,
 		          icon: 'warning',
@@ -114,7 +114,6 @@ class UserLisensiScreen extends ValidationComponent {
 		        });
 
 		    } else {
-
 		        showMessage({
 		          message: 'Data berhasil disimpan',
 		          icon: 'success',
@@ -189,10 +188,6 @@ class UserLisensiScreen extends ValidationComponent {
 	render() {
 	    return (
 	    	<PaperProvider theme={theme}>
-			    <Appbar.Header style={styleApp.Appbar}>
-			      <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
-			      <Appbar.Content title="User Lisensi" color= {theme.colors.primary}/>
-			    </Appbar.Header>
 			    
 			    <FlatList
 			      keyboardShouldPersistTaps="handled"

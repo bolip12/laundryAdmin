@@ -214,22 +214,22 @@ class UserLisensiPerpanjangScreen extends ValidationComponent {
 
 			     <FlatList
 			      keyboardShouldPersistTaps="handled"
-                  data={this.state.paketData}
-                  keyExtractor={(item) => item.id}
-                  style={styleApp.FlatList}
-                  renderItem={({ item }) => (
-                    <View>
-                    	<List.Item
-			              title={item.nama}
-			              titleStyle={{fontSize:17, fontWeight:'bold'}}
-			              description={() => this.onDesc(item)}
-			              right={() => this.onRight(item)}
-			              onPress={() => this.onSelectConfirm(item.harga, item.licenseDateNew)}
-			            />
-			            <Divider />
-                    </View>
-                  )}
-                />
+            data={this.state.paketData}
+            keyExtractor={(item) => item.id}
+            style={styleApp.FlatList}
+            renderItem={({ item }) => (
+              <View>
+              	<List.Item
+		              title={item.nama}
+		              titleStyle={{fontSize:17, fontWeight:'bold'}}
+		              description={() => this.onDesc(item)}
+		              right={() => this.onRight(item)}
+		              onPress={() => this.onSelectConfirm(item.harga, item.licenseDateNew)}
+	            	/>
+	            <Divider />
+              </View>
+            )}
+          />
 
 				<Portal>
 			        <Dialog visible={this.state.dialogDisplay} onDismiss={() => this.onClose()}>

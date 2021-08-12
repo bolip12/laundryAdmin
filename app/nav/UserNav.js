@@ -10,6 +10,7 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import theme from '../config/theme.js';
 
 import UserScreen from '../screen/UserNav/UserScreen.js';
+import UserListScreen from '../screen/UserNav/UserListScreen.js';
 import UserProfilScreen from '../screen/UserNav/UserProfilScreen';
 import UserPaymentScreen from '../screen/UserNav/UserPaymentScreen';
 import UserPaymentInsertScreen from '../screen/UserNav/UserPaymentInsertScreen';
@@ -27,6 +28,10 @@ import PaymentHistoryScreen from '../screen/UserNav/PaymentHistoryScreen';
 import LaporanScreen from '../screen/UserNav/LaporanScreen';
 import LaporanPembayaranScreen from '../screen/UserNav/LaporanPembayaranScreen';
 import LaporanLisensiScreen from '../screen/UserNav/LaporanLisensiScreen.js';
+
+import PriceListScreen from '../screen/UserNav/PriceListScreen.js';
+import PriceListInsertScreen from '../screen/UserNav/PriceListInsertScreen.js';
+import PriceListUpdateScreen from '../screen/UserNav/PriceListUpdateScreen.js';
 
 
 const BottomTab = createMaterialBottomTabNavigator();
@@ -60,6 +65,7 @@ class UserNav extends React.Component {
             {() => (
             <UserStack.Navigator initialRouteName="UserScreen" screenOptions={{headerShown:false}}>
               <UserStack.Screen name="UserScreen" component={UserScreen} />
+              <UserStack.Screen name="UserListScreen" component={UserListScreen} />
               <UserStack.Screen name="UserProfilScreen" component={UserProfilScreen} />
               <UserStack.Screen name="UserPaymentScreen" component={UserPaymentScreen} />
               <UserStack.Screen name="UserPaymentInsertScreen" component={UserPaymentInsertScreen} />
@@ -87,7 +93,10 @@ class UserNav extends React.Component {
             <UserStack.Navigator initialRouteName="PaymentScreen" screenOptions={{headerShown:false}}>
               <UserStack.Screen name="PaymentScreen" component={PaymentScreen} />
               <UserStack.Screen name="PaymentHistoryScreen" component={PaymentHistoryScreen} />
-              {/*<UserStack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} />*/}
+              <UserStack.Screen name="PriceListScreen" component={PriceListScreen} />
+              <UserStack.Screen name="PriceListInsertScreen" component={PriceListInsertScreen} />
+              <UserStack.Screen name="PriceListUpdateScreen" component={PriceListUpdateScreen} />
+              
             </UserStack.Navigator>
             )}
             </BottomTab.Screen>

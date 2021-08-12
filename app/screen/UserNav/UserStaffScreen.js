@@ -9,7 +9,7 @@ import styleApp from '../../config/styleApp.js';
 import dateFormat from '../../comp/dateFormat.js';
 import dateTimeFormatSupa from '../../comp/dateTimeFormatSupa.js';
 
-class UserScreen extends React.Component {
+class UserStaffScreen extends React.Component {
 
   constructor(props) {
       super(props);
@@ -39,7 +39,7 @@ class UserScreen extends React.Component {
             payload: { isLoading:true }
         });
 
-     const user_id = this.props.route.params.user_id;
+     const user_id = this.state.userTabId;
 
     //query
     let { data, error } = await supabase
@@ -115,10 +115,6 @@ class UserScreen extends React.Component {
     return (
       <PaperProvider theme={theme}>
 
-        <Appbar.Header style={{ backgroundColor: 'white' }}>
-          <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
-          <Appbar.Content title="User Staff" color= {theme.colors.primary} />
-        </Appbar.Header>
 
         <FlatList
           keyboardShouldPersistTaps="handled"
@@ -156,4 +152,4 @@ class UserScreen extends React.Component {
 };
 
 
-export default UserScreen;
+export default UserStaffScreen;

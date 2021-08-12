@@ -20,11 +20,9 @@ const defaultState = {
   docId: 0,
   docData: [],
 
-  notaDataTemp: [],
+  userTabId: 0,
 
-  notaTabId: 0,
 
-  filterData: [],
 };
 
 //rejuicer
@@ -57,18 +55,12 @@ const storeApp = (state = defaultState, action) => {
           docId: action.payload.docId,
           docData: action.payload.docData,
         };
-    case 'NOTATEMP':
+    
+    case 'USERTAB':
       return {...state,
-          notaDataTemp: action.payload.notaDataTemp,
+          userTabId: action.payload.userTabId,
         };
-    case 'NOTATAB':
-      return {...state,
-          notaTabId: action.payload.notaTabId,
-        };
-    case 'FILTERDATA':
-      return {...state,
-          filterData: action.payload.filterData,
-        };
+    
   }
 };
 

@@ -30,41 +30,65 @@ class PaymentScreen extends ValidationComponent {
 	    	
 	    	docId: '',
 
+	    	inputSearch: '',
+        currPage: 1,
+        perPage: 5,
+        disabledPage: false,
+
 
 	    };
 	}
 
 	componentDidUpdate(prevProps, prevState) {
-	   /* if(prevState.notifDisplay !== this.state.notifDisplay) {
-	      this.fetchData();
-	    }*/
-	}
+	  if(prevState.inputSearch !== this.state.inputSearch) {
+      this.fetchData();
+    }
 
+    if(prevState.currPage !== this.state.currPage && this.state.currPage !== 1) {
+      this.fetchData();
+    }
+	}
 
 	componentDidMount() {
-		this.fetchData();
-		//this.fetchDataUser();
+      this._unsubscribe = this.props.navigation.addListener('focus', () => {
+        this.fetchData();
+      });
 	}
+
+  componentWillUnmount() {
+  	this._unsubscribe();
+  }
 
 	async fetchData() {
 		store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:true }
-        });
+        type: 'LOADING',
+        payload: { isLoading:true }
+    });
 
+		let keyword = this.state.inputSearch.toLowerCase();
+    let rangeStart = 0;
+    let rangeEnd = (this.state.currPage * this.state.perPage) - 1;
 
-        let { data, error } = await supabase
-		      .from('user_license')
-		      .select('id, user_id, user:user_id ( nama, nama_usaha, telepon ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar')
-		      .eq('status_license', 'not_approved')
-		      .order('tanggal_mulai', {ascending:false})
+    let { data, error, count } = await supabase
+      .from('user_license')
+      .select('id, user_id, user:user_id ( nama, nama_usaha, telepon, keyword ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar', {count:'exact'})
+      .eq('status_license', 'not_approved')
+      .eq('status_bayar', 'paid')
+      .like('user.keyword', '%'+keyword+'%')
+      .order('nama_usaha', {foreignTable: 'user'})
+      .range(rangeStart, rangeEnd)
+
+    let disabledPage = false
+      if(rangeEnd >= (count-1)) {
+        disabledPage = true
+      }
 
 		//result
-		this.setState({dataList:data});
-		store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:false }
-        });
+		this.setState({dataList:data, disabledPage:disabledPage});
+			store.dispatch({
+	        type: 'LOADING',
+	        payload: { isLoading:false }
+	    });
 		
 	}
 	
@@ -96,23 +120,20 @@ class PaymentScreen extends ValidationComponent {
 									}])
 							  .eq('id', userId);
 
-			
-			
-			
 			store.dispatch({
-	            type: 'LOADING',
-	            payload: { isLoading:false }
-	        });
+          type: 'LOADING',
+          payload: { isLoading:false }
+      });
 
-	        showMessage({
-	          message: 'Data berhasil disimpan',
-	          icon: 'success',
-	          backgroundColor: theme.colors.primary,
-	          color: theme.colors.background,
-	        }); 
+      showMessage({
+        message: 'Data berhasil disimpan',
+        icon: 'success',
+        backgroundColor: theme.colors.primary,
+        color: theme.colors.background,
+      }); 
 
 
-	    	this.fetchData();
+	    this.fetchData();
 
 	    	//this.fetchAPI(telepon, message);
 			
@@ -153,6 +174,16 @@ class PaymentScreen extends ValidationComponent {
         .catch((error) => console.error(error));
  	}
 
+ 	vieMoreButton() {
+    if(this.state.disabledPage) {
+        return false;
+    } else {
+      return (<Button icon="arrow-down" mode="text" onPress={() => this.setState({currPage:this.state.currPage+1})} style={{ margin:5 }}>
+                  View More
+                </Button>);
+    }
+  }
+
 	onDesc(item) {
 		return(
 			<View>
@@ -191,25 +222,32 @@ class PaymentScreen extends ValidationComponent {
 			    <Appbar.Header style={styleApp.Appbar}>
 			      <Appbar.Content title="Verifikasi Pembayaran" color= {theme.colors.primary}/>
 			      <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => this.props.navigation.navigate('PaymentHistoryScreen')} />
+			      <Appbar.Action icon="credit-card-outline" color={theme.colors.primary} onPress={() => this.props.navigation.navigate('PriceListScreen')} />
 			    </Appbar.Header>
+
+			    <Searchbar
+            placeholder='Cari Nama Usaha'
+            fontSize={15}
+            onChangeText={(text) => this.setState({ inputSearch: text })}
+            value={this.state.inputSearch}
+            selectionColor={theme.colors.accent}
+        	/>
+
+        	<ScrollView style={styleApp.ScrollView}>
 			    
-			    <FlatList
-			      keyboardShouldPersistTaps="handled"
-                  data={this.state.dataList}
-                  keyExtractor={(item) => item.id}
-                  style={styleApp.FlatList}
-                  renderItem={({ item }) => (
-                    <View>
-                    	<List.Item
-			              title={item.user.nama+' '+'('+item.user.nama_usaha+')'}
-			              description={() => this.onDesc(item)}
-			              right={() => this.onRight(item)}
-			              //onPress={() => this.onSelect(item.id)}
-			            />
-			            <Divider />
-                    </View>
-                  )}
-                />
+			    {this.state.dataList && this.state.dataList.map((item) => (
+			    	item.user != null &&
+            <View>
+            	<List.Item
+	              title={item.user.nama+' '+'('+item.user.nama_usaha+')'}
+	              description={() => this.onDesc(item)}
+	              right={() => this.onRight(item)}
+	            />
+	            <Divider />
+            </View>
+          ))}
+          
+          </ScrollView>
 
 			</PaperProvider>
 	    )

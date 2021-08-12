@@ -43,7 +43,7 @@ class UserProfilScreen extends React.Component {
             payload: { isLoading:true }
         });
 
-      const user_id = this.props.route.params.user_id;
+      const user_id = this.state.userTabId;
       
       let { data, error } = await supabase
           .from('user')
@@ -70,11 +70,6 @@ class UserProfilScreen extends React.Component {
   render() {
     return (
       <PaperProvider theme={theme}>
-
-        <Appbar.Header style={styleApp.Appbar}>
-          <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
-          <Appbar.Content title="User Profile" color= {theme.colors.primary}/>
-        </Appbar.Header>
 
         <ScrollView style={styleApp.ScrollView}>
           
