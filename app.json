@@ -4,9 +4,9 @@
     "slug": "KotakbonAdmin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/iconKBA5.png",
+    "icon": "./assets/iconKBA-new.png",
     "splash": {
-      "image": "./assets/splashKBA.png",
+      "image": "./assets/splashKBA-new.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,7 +23,7 @@
       "package": "com.admin.kotakbonadmin",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon-new.png",
         "backgroundColor": "#FFFFFF"
       }
     },

@@ -31,7 +31,7 @@ class UserListScreen extends React.Component {
 
           <Appbar.Header style={{ backgroundColor: 'white' }}>
             <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
-            <Appbar.Content title="Detai User" color= {theme.colors.primary} />
+            <Appbar.Content title="Detail User" color= {theme.colors.primary} />
           </Appbar.Header>
         
 

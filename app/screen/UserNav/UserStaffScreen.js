@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, FlatList, View, StyleSheet } from 'react-native';
+import { ScrollView, FlatList, View, StyleSheet, Dimensions } from 'react-native';
 import { Provider as PaperProvider, Appbar, List, Colors, Caption, Badge, Divider, IconButton, Menu, Button, Text, Subheading, Chip, TouchableRipple } from 'react-native-paper';
 
 import supabase from '../../config/supabase.js';
@@ -8,6 +8,8 @@ import theme from '../../config/theme.js';
 import styleApp from '../../config/styleApp.js';
 import dateFormat from '../../comp/dateFormat.js';
 import dateTimeFormatSupa from '../../comp/dateTimeFormatSupa.js';
+
+const windowWidth = Dimensions.get('window').width;
 
 class UserStaffScreen extends React.Component {
 
@@ -95,10 +97,12 @@ class UserStaffScreen extends React.Component {
             });
       }
 
-    store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:false }
-        });
+      store.dispatch({
+          type: 'LOADING',
+          payload: { isLoading:false }
+      });
+
+    this.toggleMenu(docId);
   }
   
   onDesc(item) {
@@ -131,10 +135,12 @@ class UserStaffScreen extends React.Component {
                 right={() => <Menu
                                 visible={this.state.['displayMenu'+item.id]}
                                 onDismiss={() => this.toggleMenu(item.id)}
-                                anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}>
+                                anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}
+                              >
                                 <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.nama_usaha, nama:item.nama, licenseDate:item.license_date})} icon="account-check" title="License" />
-                                <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Macaddress" />
-                              </Menu>}
+                                <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Session" />
+                              </Menu>
+                          }
 
 
 
