@@ -71,7 +71,7 @@ class UserScreen extends React.Component {
 
     let { data, error, count } = await supabase
           .from('user')
-          .select('id, nama, nama_usaha, email, license_date', {count:'exact'})          
+          .select('id, nama, nama_usaha, email, license_date, login_macaddress', {count:'exact'})
           .is('pid', null)
           .like('keyword', '%'+keyword+'%')
           .order('nama_usaha', { ascending: true })
@@ -142,9 +142,9 @@ class UserScreen extends React.Component {
 
   async onLogoutMacAddress(docId) {
     store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:true }
-        });
+        type: 'LOADING',
+        payload: { isLoading:true }
+    });
 
     let response = [];
 
@@ -174,9 +174,11 @@ class UserScreen extends React.Component {
       }
 
     store.dispatch({
-            type: 'LOADING',
-            payload: { isLoading:false }
-        });
+        type: 'LOADING',
+        payload: { isLoading:false }
+    });
+
+    this.fetchData();
 
   }
 
@@ -187,6 +189,16 @@ class UserScreen extends React.Component {
         type: 'USERTAB',
         payload: {userTabId:user_id}
     });
+  }
+
+  onRight(item) {
+    return(
+      <View>
+        { item.login_macaddress != null &&
+        <IconButton icon="power" size={30} onPress={() => this.onLogoutMacAddress(item.id)}/>
+        }
+      </View>
+    )
   }
 
 
@@ -220,7 +232,7 @@ class UserScreen extends React.Component {
                 onPress={() => this.onSelect(item.id)}
                 description={() => this.onDesc(item)}
                 left={props => <Badge style={{ backgroundColor: theme.colors.primary, margin: 10, marginBottom: 25 }} size={40}>{item.nama_usaha.charAt(0)}</Badge>}
-                right={() => <IconButton icon="logout" onPress={() => this.onLogoutMacAddress(item.id)}/>}
+                right={() => this.onRight(item)}
                 
                 /*<Menu
                   visible={this.state.['displayMenu'+item.id]}

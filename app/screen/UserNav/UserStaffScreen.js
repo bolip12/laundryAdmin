@@ -46,7 +46,7 @@ class UserStaffScreen extends React.Component {
     //query
     let { data, error } = await supabase
           .from('user')
-          .select('id, nama, nama_usaha, email, license_date')
+          .select('id, nama, nama_usaha, email, license_date, login_macaddress')
           .eq('pid', user_id)
           .order('id', {ascending: false})
 
@@ -114,6 +114,15 @@ class UserStaffScreen extends React.Component {
     )
   }
 
+  onRight(item) {
+    return(
+      <View>
+        { item.login_macaddress != null &&
+        <IconButton icon="power" size={30} onPress={() => this.onLogoutMacAddress(item.id)}/>
+        }
+      </View>
+    )
+  }
 
   render() {
     return (
@@ -132,17 +141,16 @@ class UserStaffScreen extends React.Component {
                 description={() => this.onDesc(item)}
                 left={props => <Badge style={{ backgroundColor: theme.colors.primary, margin: 10, marginBottom: 25 }} size={40}>{item.nama.charAt(0)}</Badge>}
                 onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.nama_usaha, nama:item.nama, licenseDate:item.license_date})}
-                right={() => <Menu
-                                visible={this.state.['displayMenu'+item.id]}
-                                onDismiss={() => this.toggleMenu(item.id)}
-                                anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}
-                              >
-                                <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.nama_usaha, nama:item.nama, licenseDate:item.license_date})} icon="account-check" title="License" />
-                                <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Session" />
-                              </Menu>
-                          }
+                right={() => this.onRight(item)}
 
-
+                 /*<Menu
+                    visible={this.state.['displayMenu'+item.id]}
+                    onDismiss={() => this.toggleMenu(item.id)}
+                    anchor={<IconButton icon="dots-vertical" onPress={(event) => this.toggleMenu(item.id)} />}
+                  >
+                    <Menu.Item onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.nama_usaha, nama:item.nama, licenseDate:item.license_date})} icon="account-check" title="License" />
+                    <Menu.Item onPress={() => this.onLogoutMacAddress(item.id)} icon="logout" title="Clear Session" />
+                  </Menu>*/
 
                   /*<IconButton icon='account-check' size={35} onPress={() => this.props.navigation.navigate('UserStaffLisensiScreen', {staffId: item.id, namaUsaha:item.nama_usaha, nama:item.nama, licenseDate:item.license_date})} />*/
                 

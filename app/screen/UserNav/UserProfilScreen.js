@@ -1,7 +1,7 @@
 import React from 'react';
-import { ScrollView, FlatList, View, StyleSheet } from 'react-native';
+import { ScrollView, FlatList, View, StyleSheet, Alert, Linking} from 'react-native';
 import { Provider as PaperProvider, Appbar, List, Colors, Caption, Badge, Menu, Divider, Button, Text, Subheading, Chip, TouchableRipple, TextInput} from 'react-native-paper';
-
+import { showMessage } from "react-native-flash-message";
 import supabase from '../../config/supabase.js';
 import store from '../../config/storeApp';
 import theme from '../../config/theme.js';
@@ -28,6 +28,7 @@ class UserProfilScreen extends React.Component {
         alamat: '',
         email: '',
         licenseDate: '',
+        new_password: '',
 
       };
 
@@ -47,7 +48,7 @@ class UserProfilScreen extends React.Component {
       
       let { data, error } = await supabase
           .from('user')
-          .select('id, email, nama_usaha, telepon, license_date')          
+          .select('id, email, nama_usaha, telepon, license_date, password')          
           .eq('id', user_id)
           .single()
 
@@ -56,6 +57,7 @@ class UserProfilScreen extends React.Component {
         nama_usaha:data.nama_usaha,  
         telepon:data.telepon,  
         license_date:data.license_date,
+        password:data.password,
         
       });
 
@@ -64,6 +66,63 @@ class UserProfilScreen extends React.Component {
             payload: { isLoading:false }
       });
     
+  }
+
+  onResetConfirm() {
+      Alert.alert(
+        "Warning",
+        "Reset password menjadi 'kotakbon123' ",
+        [
+          { text: "Batal" },
+          { text: "Oke", onPress: () => this.onResetPass() }
+        ],
+      );
+  }
+  
+  async onResetPass() {
+   
+        store.dispatch({
+            type: 'LOADING',
+            payload: { isLoading:true }
+        });
+
+        let new_password = 'kotakbon123';
+        let email = this.state.email;
+        let password = this.state.password;
+        let currTime = new Date();
+
+        const { user, session, error } = await supabase.auth.signIn({
+            email: email,
+            password: password,
+        })
+
+        await supabase.auth.api
+          .updateUser(session.access_token, { password : new_password })
+
+        //update password
+        await supabase
+          .from('user')
+          .update({password:new_password, _updated_at:currTime})  
+          .eq('email', email)
+          .single();
+
+        showMessage({
+            message: 'Reset password berhasil',
+            icon: 'success',
+            backgroundColor: theme.colors.primary,
+            color: theme.colors.background,
+        }); 
+
+        store.dispatch({
+            type: 'LOADING',
+            payload: { isLoading:false }
+        });
+  }
+
+  onWhatsapp() {
+    let phone = '+62'+this.state.telepon;
+
+    Linking.openURL('whatsapp://send?phone='+phone);
   }
 
 
@@ -97,14 +156,6 @@ class UserProfilScreen extends React.Component {
             />
             <Divider />
 
-           {/* <TextInput
-              label="Alamat"
-              disabled
-              value={this.state.alamat}
-              style={styleApp.TextInput}                                                                                                                                                                                                                                                                                                              
-            />
-            <Divider />*/}
-
             <TextInput
               label="License Date"
               disabled
@@ -113,6 +164,24 @@ class UserProfilScreen extends React.Component {
             />
             <Divider />
 
+            <Button 
+              mode="contained"
+              icon="lock-reset" 
+              onPress={() => this.onResetConfirm()}
+              style={{ margin:10, marginTop:20, borderRadius:20 }}
+            >
+              Reset Password
+            </Button>
+
+
+            <Button 
+              mode="contained"
+              icon="whatsapp" 
+              onPress={() => this.onWhatsapp()}
+              style={{ margin:10, borderRadius:20 }}
+            >
+              WhatsApp
+            </Button>
 
           </ScrollView>
 

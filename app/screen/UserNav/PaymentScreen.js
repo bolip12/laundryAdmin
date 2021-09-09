@@ -101,8 +101,12 @@ class PaymentScreen extends ValidationComponent {
 	            payload: { isLoading:true }
 	        });
 
-			let message = 'KotakBon: Lisensi aplikasi berhasil diperpanjang sampai Tanggal '+dateFormatSupa(tanggalAkhir);
-			
+			let message = '';
+
+			message = message+'*KotakBon*: Pembayaran telah *diverifikasi* & lisensi berhasil diperpanjang sampai dengan '+'*'+dateFormatSupa(tanggalAkhir)+'*\n\n' ;
+			message = message+'Silahkan *restart aplikasi* sebelum menggunakan aplikasi'+'\n';
+			message = message+'Terimakasih';
+
 			let update_license = await supabase
 							  .from('user_license')
 							  .update([{
@@ -135,7 +139,7 @@ class PaymentScreen extends ValidationComponent {
 
 	    this.fetchData();
 
-	    	//this.fetchAPI(telepon, message);
+	    this.fetchAPI(telepon, message);
 			
 		}
 	}

@@ -4,7 +4,7 @@
     "slug": "KotakbonAdmin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/iconKBA-new.png",
+    "icon": "./assets/iconKBA.png",
     "splash": {
       "image": "./assets/splashKBA-new.png",
       "resizeMode": "contain",

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, FlatList, Alert, Text, ScrollView } from 'react-native';
+import { View, FlatList, Alert, Text, ScrollView, Linking} from 'react-native';
 import { Provider as PaperProvider, Appbar, Searchbar, List, Divider, Chip, Portal, Caption, Subheading, Dialog, TextInput, Button, IconButton, Badge, RadioButton } from 'react-native-paper';
 import ValidationComponent from 'react-native-form-validator';
 import { showMessage } from "react-native-flash-message";
@@ -50,7 +50,7 @@ class UserStaffLisensiScreen extends ValidationComponent {
 	componentDidMount() {
 		this.fetchData();
 		this.fetchDataBank();
-		
+		this.fetchDataUser();
 	}
 
 	async fetchData() {
@@ -63,7 +63,7 @@ class UserStaffLisensiScreen extends ValidationComponent {
 
         let { data, error } = await supabase
 		      .from('user_license')
-		      .select('id, user:user_id ( nama ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar')
+		      .select('id, user:user_id ( nama, telepon ), tanggal_mulai, tanggal_akhir, nominal, status_license, status_bayar')
 		      .eq('user_id', staffId)
 		      .order('tanggal_mulai', {ascending:false})
 
@@ -83,6 +83,22 @@ class UserStaffLisensiScreen extends ValidationComponent {
 		      .select('id, nama, rek_no, rek_nama')
 
 	    this.setState({ bankData: bank_data });
+	   	
+	}
+
+	async fetchDataUser() {
+
+		let staffId = this.props.route.params.staffId;
+
+		let { data, error } = await supabase
+          .from('user')
+          .select('id, telepon')          
+          .eq('id', staffId)
+          .single()
+
+      this.setState({
+        telepon:data.telepon,  
+      });
 	   	
 	}
 
@@ -185,12 +201,19 @@ class UserStaffLisensiScreen extends ValidationComponent {
 	}
 	
 
+	onWhatsapp() {
+		let phone = '+62'+this.state.telepon;
+
+    Linking.openURL('whatsapp://send?phone='+phone);
+	}
+
 	render() {
 	    return (
 	    	<PaperProvider theme={theme}>
 			    <Appbar.Header style={styleApp.Appbar}>
 			      <Appbar.BackAction color= {theme.colors.primary} onPress={() => this.props.navigation.goBack()} />
 			      <Appbar.Content title="Staff Lisensi" color= {theme.colors.primary}/>
+			       <Appbar.Action icon="whatsapp" color= {theme.colors.primary} onPress={() => this.onWhatsapp()} />
 			    </Appbar.Header>
 			    
 			    <FlatList
